@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FFFFFF;
+  --foreground: #000000;
+  --primary-olive: #526E48;
+  --primary-olive-hover: #3E5336;
+  --clinical-zinc: #F8F9F3;
+  --olive-shadow: rgba(82, 110, 72, 0.1);
+  
+  /* Legacy mapping for compatibility with high-precision components */
+  --primary-gold: #526E48;
+  --primary-gold-hover: #3E5336;
+  --dark-slate: #F8F9FB;
+  --gold-shadow: rgba(82, 110, 72, 0.08);
+}
+
+.light-theme {
+  --background: #FFFFFF;
+  --foreground: #526E48;
+  --card-bg: #F8F9F3;
+  --border-color: rgba(82, 110, 72, 0.1);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary-olive: var(--primary-olive);
+  --color-primary-gold: var(--primary-olive);
+  --color-primary-gold-hover: var(--primary-olive-hover);
+  --color-dark-slate: var(--dark-slate);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: #526E48;
+  color: white;
+}
+
+.bg-gold-gradient {
+  background: linear-gradient(to right, #526E48, #3E5336);
+}
+
+.text-gold-gradient {
+  background: linear-gradient(to right, #526E48, #000000);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

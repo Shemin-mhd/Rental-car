@@ -531,9 +531,8 @@ function BookingConfirmContent({ id }: { id: string }) {
                     {/* ── Right: Car Summary ── */}
                     <div className="lg:col-span-5">
                         <div className="bg-white border border-black/[0.03] rounded-[3rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.06)] sticky top-28">
-                            <div className="relative h-64 lg:h-72 bg-zinc-50">
+                            <div className="relative h-64 lg:h-72 bg-zinc-50 border-b border-black/[0.03]">
                                 <Image src={getImageUrl(car.image)} alt={car.name} fill className="object-cover group-hover:scale-110 transition-transform duration-[3000ms]" unoptimized />
-                                <div className="absolute inset-0 bg-gradient-to-t from-white via-white/10 to-transparent" />
                                 <div className="absolute top-6 right-6">
                                     <span className="bg-[#526E48] text-white text-[8px] font-black uppercase px-3 py-1.5 rounded-xl tracking-widest italic shadow-xl">{car.category}</span>
                                 </div>

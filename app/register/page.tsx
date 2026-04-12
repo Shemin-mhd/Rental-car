@@ -146,7 +146,7 @@ function RegisterContent() {
                     transition={{ delay: 0.8, duration: 1 }}
                     className="mt-16"
                 >
-                    <p className="text-[#526E48] text-[10px] font-black uppercase tracking-[0.4em] mb-5 italic">/// Acquire_Registry</p>
+                    <p className="text-[#526E48] text-[10px] font-black uppercase tracking-[0.4em] mb-5 italic">{"/// Acquire_Registry"}</p>
                     <h1 className="text-6xl xl:text-7xl font-black uppercase italic leading-[0.88] text-black mb-6 tracking-tighter shadow-sm">
                         Go<br />
                         Beyond<br />
@@ -217,13 +217,13 @@ function RegisterContent() {
                     >
                         {/* Full Name */}
                         <motion.div variants={itemVariants} className="space-y-2">
-                            <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Nmae</label>
+                            <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Name</label>
                             <input
                                 type="text"
                                 required
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 focus:border-[#526E48] text-black rounded-2xl px-6 py-4 focus:outline-none transition-all placeholder:text-black/40 text-xs font-black uppercase italic tracking-widest shadow-inner"
+                                className="w-full bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 focus:border-[#526E48] text-black rounded-2xl px-6 py-4 focus:outline-none transition-all placeholder:text-black/40 text-xs font-black italic tracking-widest shadow-inner"
                                 placeholder="Enter the name"
                             />
                         </motion.div>
@@ -236,7 +236,7 @@ function RegisterContent() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 focus:border-[#526E48] text-black rounded-2xl px-6 py-4 focus:outline-none transition-all placeholder:text-black/40 text-xs font-black uppercase italic tracking-widest shadow-inner"
+                                className="w-full bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 focus:border-[#526E48] text-black rounded-2xl px-6 py-4 focus:outline-none transition-all placeholder:text-black/40 text-xs font-black italic tracking-widest shadow-inner"
                                 placeholder="Enter the Email"
                             />
                         </motion.div>

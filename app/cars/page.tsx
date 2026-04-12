@@ -7,6 +7,13 @@ import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { apiFetch, getImageUrl } from "@/services/api";
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from "@/components/ui/Select";
 
 interface Car {
     _id: string;
@@ -63,6 +70,7 @@ function CarListingContent() {
     const [showLogout, setShowLogout] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [pendingBookings, setPendingBookings] = useState<any[]>([]);
+    const [hasConfirmed, setHasConfirmed] = useState(false);
 
     useEffect(() => {
         if (searchParams.get("payment") === "success") {
@@ -93,6 +101,8 @@ function CarListingContent() {
                         if (Array.isArray(data)) {
                             const pending = data.filter((b: any) => b.status !== 'Confirmed' && b.status !== 'Cancelled');
                             setPendingBookings(pending);
+                            const confirmed = data.some((b: any) => b.status === 'Confirmed');
+                            setHasConfirmed(confirmed);
                         }
                     })
                     .catch(() => { });
@@ -202,11 +212,20 @@ function CarListingContent() {
                 </header>
 
                 <section className="mb-8 flex justify-center">
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-4xl rounded-[2rem] border border-black/[0.05] bg-zinc-50 p-2 shadow-2xl border-b-2 border-b-[#526E48]/20 flex flex-col md:flex-row items-center gap-2">
-                        <div className="flex-1 w-full bg-white rounded-2xl h-12 px-4 flex items-center border border-black/[0.02]">
-                            <select value={location} onChange={(e) => setLocation(e.target.value)} className="w-full bg-transparent text-[10px] font-black uppercase text-black outline-none cursor-pointer">
-                                {locations.map(loc => <option key={loc} value={loc} className="bg-white text-black">{loc}</option>)}
-                            </select>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-3xl rounded-[2rem] border border-black/[0.05] bg-zinc-50 p-2 shadow-2xl border-b-2 border-b-[#526E48]/20 flex flex-col md:flex-row items-center gap-2">
+                        <div className="flex-1 w-full bg-white rounded-2xl h-12 flex items-center overflow-hidden">
+                            <Select value={location} onValueChange={setLocation}>
+                                <SelectTrigger className="border-none bg-transparent h-full w-full">
+                                    <SelectValue placeholder="Vector Origin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {locations.map(loc => (
+                                        <SelectItem key={loc} value={loc}>
+                                            {loc}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="flex-1 w-full flex bg-white rounded-2xl h-12 p-1 border border-black/[0.02]">
@@ -220,10 +239,10 @@ function CarListingContent() {
 
                             {isLoggedIn && (
                                 <button
-                                    onClick={() => router.push('/bookings/status')}
+                                    onClick={() => router.push(hasConfirmed ? '/bookings/history' : '/bookings/status')}
                                     className="h-12 px-6 bg-white border border-[#526E48]/20 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[#526E48] hover:bg-[#526E48] hover:text-white transition-all shadow-sm flex items-center gap-2 whitespace-nowrap group"
                                 >
-                                    Check Status
+                                    {hasConfirmed ? 'Check History' : 'Check Status'}
                                     {pendingBookings.length > 0 ? (
                                         <div className="bg-[#526E48] text-white text-[8px] px-1.5 py-0.5 rounded-full group-hover:bg-white group-hover:text-[#526E48] animate-pulse">
                                             {pendingBookings.length}

@@ -65,7 +65,7 @@ function LoginContent() {
             } else if (data.user.role === "admin") {
                 router.push("/dashboard/admin");
             } else if (data.user.role === "customer") {
-                router.push("/dashboard/customer/add-car");
+                router.push("/dashboard/customer");
             } else {
                 router.push("/");
             }
@@ -177,13 +177,13 @@ function LoginContent() {
                     transition={{ delay: 0.7, duration: 1 }}
                     className="mt-16"
                 >
-                    <p className="text-[#526E48] text-[10px] font-black uppercase tracking-[0.4em] mb-4 italic">/// Protocol_Gateway</p>
+                    <p className="text-[#526E48] text-[10px] font-black uppercase tracking-[0.4em] mb-4 italic">{"/// Protocol_Gateway"}</p>
                     <h1 className="text-6xl font-black uppercase italic leading-[0.9] text-black mb-6 tracking-tighter">
                         Drive the<br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#526E48] to-black">Extraordinary.</span>
                     </h1>
                     <p className="text-black text-[10px] uppercase font-black leading-relaxed max-w-sm italic tracking-widest">
-                        Access the world's most exclusive automotive collection. Every journey, a clinical statement of authority.
+                        Access the world&apos;s most exclusive automotive collection. Every journey, a clinical statement of authority.
                     </p>
                 </motion.div>
 
@@ -259,7 +259,7 @@ function LoginContent() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 focus:border-[#526E48] text-black rounded-2xl px-6 py-4 focus:outline-none transition-all placeholder:text-black/40 text-xs font-black uppercase italic tracking-widest shadow-inner"
+                                className="w-full bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 focus:border-[#526E48] text-black rounded-2xl px-6 py-4 focus:outline-none transition-all placeholder:text-black/40 text-xs font-black italic tracking-widest shadow-inner"
                                 placeholder="Enter the Email"
                             />
                         </motion.div>

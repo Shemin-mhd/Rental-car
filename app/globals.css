@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #FFFFFF;
-  --foreground: #000000;
+  --background: #000000;
+  --foreground: #FFFFFF;
   --primary-olive: #526E48;
   --primary-olive-hover: #3E5336;
-  --clinical-zinc: #F8F9F3;
-  --olive-shadow: rgba(82, 110, 72, 0.1);
+  --clinical-zinc: #1A1A1B;
+  --olive-shadow: rgba(82, 110, 72, 0.2);
   
   /* Legacy mapping for compatibility with high-precision components */
   --primary-gold: #526E48;
   --primary-gold-hover: #3E5336;
-  --dark-slate: #F8F9FB;
-  --gold-shadow: rgba(82, 110, 72, 0.08);
+  --dark-slate: #0A0A0B;
+  --gold-shadow: rgba(82, 110, 72, 0.15);
 }
 
 .light-theme {

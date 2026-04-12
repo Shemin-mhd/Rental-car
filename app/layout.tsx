@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/providers/QueryProvider";
+import { ChatSocketProvider } from "@/components/providers/ChatSocketProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,8 +29,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-black selection:bg-[#526E48]/20">
-        <QueryProvider>{children}</QueryProvider>
+      <body className="min-h-full flex flex-col bg-black text-white selection:bg-[#526E48]/40">
+        <QueryProvider>
+          <ChatSocketProvider>
+            {children}
+          </ChatSocketProvider>
+        </QueryProvider>
       </body>
     </html>
   );

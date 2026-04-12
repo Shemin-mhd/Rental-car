@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { apiFetch } from "@/services/api";
+import { useRouter } from "next/navigation";
 
 const getImageUrl = (img?: string) => {
     if (!img || img === "" || img === "null") return "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=2000";
@@ -12,6 +13,7 @@ const getImageUrl = (img?: string) => {
 };
 
 export default function BookingHistoryPage() {
+    const router = useRouter();
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -33,6 +35,39 @@ export default function BookingHistoryPage() {
         };
         fetchBookings();
     }, []);
+
+    const handleCancelBooking = async (bookingId: string) => {
+        if (!confirm("Are you sure you want to cancel this reservation?")) return;
+        try {
+            const res = await apiFetch(`/bookings/${bookingId}`, { method: "DELETE" });
+            if (res.ok) {
+                setBookings(prev => prev.filter(b => b._id !== bookingId));
+            } else {
+                const data = await res.json();
+                alert(data.message || "Failed to cancel reservation");
+            }
+        } catch (err) {
+            alert("Network error.");
+        }
+    };
+
+    const handleInitiateChat = async (bookingId: string) => {
+        try {
+            const res = await apiFetch("/chat/create", {
+                method: "POST",
+                body: JSON.stringify({ bookingId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                router.push(`/dashboard/chat?id=${data._id}`);
+            } else {
+                alert(`Tactical Link Error: ${data.message || "Failed to synchronize thread"}`);
+            }
+        } catch (error) {
+            console.error("Chat initiation failure", error);
+            alert("Signal transmission failure. Check neural link connection.");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-white text-black selection:bg-[#526E48]/30 pb-32">
@@ -107,10 +142,36 @@ export default function BookingHistoryPage() {
                                                 /// {bk.status}
                                             </p>
                                         </div>
-                                        <div className="col-span-12 sm:col-span-5 md:col-span-2 text-right">
+                                        <div className="col-span-12 sm:col-span-5 md:col-span-2 text-right flex flex-col items-end gap-3">
                                             <span className={`inline-block px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border ${bk.documentStatus === 'Approved' ? 'bg-green-500/[0.02] text-green-600 border-green-500/10' : bk.documentStatus === 'Rejected' ? 'bg-red-500/[0.02] text-red-500 border-red-500/10' : 'bg-black/[0.02] text-zinc-400 border-black/5'}`}>
                                                 Log: {bk.documentStatus}
                                             </span>
+
+                                            <button
+                                                onClick={() => handleInitiateChat(bk._id)}
+                                                className="w-full max-w-[140px] py-2 bg-[#526E48]/5 text-[#526E48] rounded-xl text-[8px] font-black uppercase tracking-[0.1em] border border-[#526E48]/10 hover:bg-[#526E48]/10 transition-all italic"
+                                            >
+                                                Chat with Host
+                                            </button>
+
+                                            {bk.status === 'Pending' && (
+                                                <div className="flex flex-col items-end gap-2 w-full max-w-[140px]">
+                                                    {bk.documentStatus === 'Approved' && (
+                                                        <Link
+                                                            href={`/bookings/payment/${bk._id}`}
+                                                            className="w-full text-center py-2.5 bg-black text-white rounded-xl text-[8px] font-black uppercase tracking-[0.15em] hover:bg-[#526E48] transition-all shadow-lg"
+                                                        >
+                                                            Secure Payment
+                                                        </Link>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleCancelBooking(bk._id)}
+                                                        className="w-full text-center py-2.5 bg-white border border-red-500/20 text-red-500 rounded-xl text-[8px] font-black uppercase tracking-[0.15em] hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                                    >
+                                                        Cancel Reservation
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )) : (

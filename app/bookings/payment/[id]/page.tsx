@@ -35,7 +35,7 @@ interface Booking {
     status: string;
     startDate: string;
     endDate: string;
-    bookingType: "self" | "driver";
+
 }
 
 export default function BookingPaymentPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -233,14 +233,11 @@ function PaymentContent({ id }: { id: string }) {
                             <p className="text-[10px] font-black italic text-black uppercase tracking-tight">{new Date(booking.endDate).toLocaleDateString('en-GB')}</p>
                         </div>
                     </div>
-                    <div className="flex justify-between text-[8px] font-black uppercase tracking-[0.2em] text-zinc-400 italic">
-                        <span>Service Type</span>
-                        <span className="text-black">{booking.bookingType === 'self' ? 'Self Drive' : 'With Driver'}</span>
-                    </div>
+
                     <div className="flex justify-between text-[8px] font-black uppercase tracking-[0.2em] text-zinc-400 italic">
                         <span>Total Duration</span>
                         <span className="text-black">
-                            {Math.max(1, Math.ceil((new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime()) / (1000 * 3600 * 24)) + 1)} Days
+                            {Math.max(1, Math.ceil((new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime()) / (1000 * 3600 * 24)))} Days
                         </span>
                     </div>
                     <div className="flex justify-between items-baseline pt-8 border-t border-black/[0.03] mt-6">

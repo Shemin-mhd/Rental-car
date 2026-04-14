@@ -255,6 +255,7 @@ function LoginContent() {
                         >
                             <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Email</label>
                             <input
+                                suppressHydrationWarning
                                 type="email"
                                 required
                                 value={email}
@@ -284,6 +285,7 @@ function LoginContent() {
                                             </button>
                                         </div>
                                         <input
+                                            suppressHydrationWarning
                                             type="password"
                                             required={!isForgotPassword}
                                             value={password}

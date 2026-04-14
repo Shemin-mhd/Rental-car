@@ -14,17 +14,19 @@ import { useSearchParams } from "next/navigation";
 export default function ChatDashboardPage() {
   const searchParams = useSearchParams();
   const chatIdFromUrl = searchParams.get("id");
-  const { setChats, setActiveChat, chats } = useChatStore();
+  const { setChats, setActiveChat, setMessages, activeChat, chats } = useChatStore();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : null;
-    const isAdmin = user?.role === "admin";
+    const userIsAdmin = user?.role === "admin";
+    setIsAdmin(userIsAdmin);
 
     // 🔱 Initial Sync: Load all authorized tactical threads
     const fetchChats = async () => {
       try {
-        const endpoint = isAdmin ? "/chat/admin/all-chats" : "/chat/user-chats";
+        const endpoint = userIsAdmin ? "/chat/admin/all-chats" : "/chat/user-chats";
         const res = await apiFetch(endpoint);
         const data = await res.json();
         setChats(data);
@@ -57,7 +59,7 @@ export default function ChatDashboardPage() {
       {/* 🔱 Peripheral Navigation Bar */}
       <nav className="h-16 px-6 border-b border-zinc-100 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-6">
-            <Link href="/dashboard/customer" className="p-2 hover:bg-zinc-50 rounded-xl transition-colors text-zinc-400">
+            <Link href={isAdmin ? "/dashboard/admin" : "/dashboard/customer"} className="p-2 hover:bg-zinc-50 rounded-xl transition-colors text-zinc-400">
                 <ChevronLeft size={20} />
             </Link>
             <div className="flex items-center gap-3">

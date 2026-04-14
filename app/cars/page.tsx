@@ -7,13 +7,14 @@ import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { apiFetch, getImageUrl } from "@/services/api";
-import { 
-    Select, 
-    SelectContent, 
-    SelectItem, 
-    SelectTrigger, 
-    SelectValue 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
 } from "@/components/ui/Select";
+import LuxuryDatePicker from "@/components/ui/DatePicker";
 
 interface Car {
     _id: string;
@@ -27,13 +28,17 @@ interface Car {
     category: string;
     image: string;
     isAvailable: boolean;
+    availableFrom?: string;
+    ownerId?: {
+        name: string;
+        role: string;
+    };
 }
 
 const fetchCars = async ({ category, location, bookingType, startDate, endDate }: any) => {
     const query = new URLSearchParams({
         category: category === "All" ? "" : category,
         location: location === "All" ? "" : location,
-        type: bookingType === "all" ? "" : bookingType,
         start: startDate,
         end: endDate,
     });
@@ -59,9 +64,9 @@ function CarListingContent() {
     const router = useRouter();
     const [category, setCategory] = useState("All");
     const [location, setLocation] = useState(searchParams.get("location") || "All");
-    const [bookingType, setBookingType] = useState(searchParams.get("type") || "");
-    const [startDate] = useState(searchParams.get("start") || "");
-    const [endDate] = useState(searchParams.get("end") || "");
+
+    const [startDate, setStartDate] = useState(searchParams.get("start") || "");
+    const [endDate, setEndDate] = useState(searchParams.get("end") || "");
     const fleetRef = useRef<HTMLDivElement>(null);
     const notificationsRef = useRef<HTMLDivElement>(null);
 
@@ -116,8 +121,8 @@ function CarListingContent() {
     };
 
     const { data: cars = [], isLoading: loading, refetch } = useQuery({
-        queryKey: ["cars", { category, location, bookingType, startDate, endDate }],
-        queryFn: () => fetchCars({ category, location, bookingType, startDate, endDate }),
+        queryKey: ["cars", { category, location, startDate, endDate }],
+        queryFn: () => fetchCars({ category, location, startDate, endDate }),
     });
 
     const categories = ["All", "Wedding", "Luxury", "Family", "SUV", "Vintage"];
@@ -144,7 +149,7 @@ function CarListingContent() {
             router.push("/register");
             return;
         }
-        const detailsUrl = `/cars/${carId}?type=${bookingType}&start=${startDate}&end=${endDate}`;
+        const detailsUrl = `/cars/${carId}?start=${startDate}&end=${endDate}`;
         router.push(detailsUrl);
     };
 
@@ -211,16 +216,20 @@ function CarListingContent() {
                     </div>
                 </header>
 
-                <section className="mb-8 flex justify-center">
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-3xl rounded-[2rem] border border-black/[0.05] bg-zinc-50 p-2 shadow-2xl border-b-2 border-b-[#526E48]/20 flex flex-col md:flex-row items-center gap-2">
-                        <div className="flex-1 w-full bg-white rounded-2xl h-12 flex items-center overflow-hidden">
+                <section className="mb-10 flex justify-center relative z-50">
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[1100px] rounded-[2rem] border border-black/[0.05] bg-zinc-50 p-2 shadow-2xl border-b-2 border-b-[#526E48]/20 flex flex-col lg:flex-row items-center gap-3">
+                        {/* Location */}
+                        <div className="w-full lg:w-48 bg-white rounded-2xl h-14 flex items-center overflow-hidden shrink-0 border border-black/5">
                             <Select value={location} onValueChange={setLocation}>
-                                <SelectTrigger className="border-none bg-transparent h-full w-full">
-                                    <SelectValue placeholder="Vector Origin" />
+                                <SelectTrigger className="border-none bg-transparent h-full w-full px-5 text-[10px] font-black uppercase tracking-widest">
+                                    <div className="flex flex-col items-start gap-0.5">
+                                        <span className="text-[7px] text-[#526E48] font-black tracking-widest">LOCATION</span>
+                                        <SelectValue placeholder="Vector Origin" />
+                                    </div>
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-2xl border-black/5">
                                     {locations.map(loc => (
-                                        <SelectItem key={loc} value={loc}>
+                                        <SelectItem key={loc} value={loc} className="text-[10px] font-black uppercase py-3">
                                             {loc}
                                         </SelectItem>
                                     ))}
@@ -228,27 +237,44 @@ function CarListingContent() {
                             </Select>
                         </div>
 
-                        <div className="flex-1 w-full flex bg-white rounded-2xl h-12 p-1 border border-black/[0.02]">
-                            {[{ k: "self", l: "Self" }, { k: "driver", l: "Crew" }].map(opt => (
-                                <button key={opt.k} onClick={() => setBookingType(opt.k)} className={`flex-1 rounded-xl text-[9px] font-black uppercase transition-all ${bookingType === opt.k ? "bg-[#526E48] text-white shadow-lg" : "text-zinc-400 hover:text-black"}`}>{opt.l}</button>
-                            ))}
+                        {/* Pick-up */}
+                        <div className="w-full lg:w-52 h-14 bg-white rounded-2xl border border-black/5 px-2 flex items-center">
+                            <LuxuryDatePicker 
+                                label="DEPLOYMENT" 
+                                value={startDate} 
+                                onChange={setStartDate} 
+                                placeholder="Pick-up Date"
+                            />
                         </div>
 
-                        <div className="flex items-center gap-2 w-full md:w-auto">
-                            <button onClick={handleSearch} className="h-12 px-8 bg-black text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-[#526E48] transition-all active:scale-95 whitespace-nowrap shadow-xl">Search</button>
+                        {/* Drop-off */}
+                        <div className="w-full lg:w-52 h-14 bg-white rounded-2xl border border-black/5 px-2 flex items-center">
+                            <LuxuryDatePicker 
+                                label="RETRACTION" 
+                                value={endDate} 
+                                onChange={setEndDate} 
+                                placeholder="Drop-off Date" 
+                                minDate={startDate}
+                            />
+                        </div>
+
+                        <div className="flex-1 flex flex-col md:flex-row items-center gap-3 w-full">
+                            <button onClick={handleSearch} className="flex-1 h-14 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#526E48] transition-all active:scale-95 whitespace-nowrap shadow-xl">
+                                Search Archive
+                            </button>
 
                             {isLoggedIn && (
                                 <button
                                     onClick={() => router.push(hasConfirmed ? '/bookings/history' : '/bookings/status')}
-                                    className="h-12 px-6 bg-white border border-[#526E48]/20 rounded-2xl text-[9px] font-black uppercase tracking-widest text-[#526E48] hover:bg-[#526E48] hover:text-white transition-all shadow-sm flex items-center gap-2 whitespace-nowrap group"
+                                    className="flex-1 h-14 px-8 bg-white border border-black/5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-[#526E48] hover:text-black transition-all flex items-center justify-center gap-3 whitespace-nowrap group shadow-sm"
                                 >
-                                    {hasConfirmed ? 'Check History' : 'Check Status'}
+                                    {hasConfirmed ? 'History Log' : 'View Status'}
                                     {pendingBookings.length > 0 ? (
-                                        <div className="bg-[#526E48] text-white text-[8px] px-1.5 py-0.5 rounded-full group-hover:bg-white group-hover:text-[#526E48] animate-pulse">
+                                        <div className="bg-[#526E48] text-white text-[8px] px-2 py-1 rounded-lg animate-pulse">
                                             {pendingBookings.length}
                                         </div>
                                     ) : (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-[#526E48] group-hover:bg-white animate-pulse" />
+                                        <div className="w-1.5 h-1.5 rounded-full bg-[#526E48]/20 group-hover:bg-[#526E48] transition-colors" />
                                     )}
                                 </button>
                             )}
@@ -285,9 +311,15 @@ function CarListingContent() {
                                 {cars.map((car: Car, idx: number) => (
                                     <motion.article key={car._id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="group relative border border-black/[0.05] bg-[#F8F9F3] rounded-[2.8rem] overflow-hidden hover:border-[#526E48]/40 transition-all shadow-xl">
                                         <div className="relative h-64 w-full overflow-hidden">
-                                            <Image src={getImageUrl(car.image)} alt={car.name} fill className="object-cover transition-transform duration-1000 group-hover:scale-[1.05]" />
+                                            <Image src={getImageUrl(car.image)} alt={car.name} fill className="object-cover transition-transform duration-1000 group-hover:scale-[1.05]" unoptimized />
                                             <div className="absolute top-5 left-5 bg-white/60 backdrop-blur-md px-4 py-1.5 rounded-xl border border-black/5 flex items-center gap-2">
                                                 <span className="text-[9px] font-black uppercase tracking-widest text-[#526E48] italic px-1">{car.category}</span>
+                                                {car.ownerId?.role === 'customer' && (
+                                                    <div className="flex items-center gap-1.5 ml-1 border-l border-black/10 pl-2">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-blue-500">Host Provided</span>
+                                                    </div>
+                                                )}
                                                 {!car.isAvailable && (
                                                     <>
                                                         <div className="w-px h-3 bg-white/10 mx-1" />
@@ -297,8 +329,11 @@ function CarListingContent() {
                                             </div>
                                             {!car.isAvailable && (
                                                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
-                                                    <div className="border-2 border-red-500/50 px-6 py-2 rounded-full transform -rotate-12">
+                                                    <div className="border-2 border-red-500/50 px-6 py-2 rounded-full transform -rotate-12 flex flex-col items-center">
                                                         <span className="text-2xl font-black uppercase tracking-[0.2em] text-red-500/90 italic">Booked</span>
+                                                        {car.availableFrom && (
+                                                            <span className="text-[10px] font-bold text-red-500/80 uppercase tracking-widest mt-1">Available on {new Date(car.availableFrom).toLocaleDateString()}</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
@@ -336,7 +371,7 @@ function CarListingContent() {
                                                     : 'bg-white text-[#526E48] hover:bg-[#526E48] hover:text-white hover:border-transparent'
                                                     }`}
                                             >
-                                                {car.isAvailable ? 'Complete Details' : 'Currently Booked'}
+                                                {car.isAvailable ? 'Complete Details' : `Return: ${car.availableFrom ? new Date(car.availableFrom).toLocaleDateString() : 'TBD'}`}
                                             </button>
                                         </div>
                                     </motion.article>

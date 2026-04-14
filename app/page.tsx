@@ -138,7 +138,7 @@ export default function Home() {
             transition={{ delay: 0.5, duration: 0.8 }}
             className="text-white/60 text-sm leading-relaxed max-w-lg mx-auto mb-10 font-medium tracking-wide"
           >
-            Guaranteed luxury and performance vehicles across Kochi, Kozhikode & Malappuram. Self-drive or with a private driver.
+            Guaranteed luxury and performance vehicles across Kochi, Kozhikode & Malappuram. Exclusive self-drive experience.
           </motion.p>
 
           <motion.div
@@ -266,7 +266,7 @@ export default function Home() {
 
             {[
               { title: "Choose Car", desc: "Browse our curated luxury fleet and pick the perfect vehicle for your journey.", icon: "🚗", step: "01" },
-              { title: "Book Instantly", desc: "Fast online booking with instant confirmation. Self-drive or with a private driver.", icon: "📅", step: "02" },
+              { title: "Book Instantly", desc: "Fast online booking with instant confirmation. Experience the ultimate self-drive freedom.", icon: "📅", step: "02" },
               { title: "Hit the Road", desc: "Collect your car or have it delivered to you. Enjoy a premium driving experience.", icon: "🏁", step: "03" },
             ].map((step, i) => (
               <motion.div

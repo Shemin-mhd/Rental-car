@@ -51,8 +51,11 @@ export default function BookingStatusPage() {
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
-                    const pending = data.filter((b: any) => b.status !== 'Confirmed' && b.status !== 'Cancelled');
-                    setPendingBookings(pending);
+                    // Show anything that isn't fully done or cancelled
+                    const active = data.filter((b: any) =>
+                        !['Cancelled', 'Completed'].includes(b.status)
+                    );
+                    setPendingBookings(active);
                 }
             })
             .catch(console.error)
@@ -72,23 +75,25 @@ export default function BookingStatusPage() {
         } catch (err) {
             alert("Network error.");
         }
-        const handleInitiateChat = async (bookingId: string) => {
-            try {
-                const res = await apiFetch("/chat/create", {
-                    method: "POST",
-                    body: JSON.stringify({ bookingId })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    router.push(`/dashboard/chat?id=${data._id}`);
-                } else {
-                    alert(`Tactical Link Error: ${data.message || "Failed to synchronize thread"}`);
-                }
-            } catch (error) {
-                console.error("Chat initiation failure", error);
-                alert("Signal transmission failure. Check neural link connection.");
+    };
+
+    const handleInitiateChat = async (bookingId: string) => {
+        try {
+            const res = await apiFetch("/chat/create", {
+                method: "POST",
+                body: JSON.stringify({ bookingId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                router.push(`/dashboard/chat?id=${data._id}`);
+            } else {
+                alert(`Tactical Link Error: ${data.message || "Failed to synchronize thread"}`);
             }
-        };
+        } catch (error) {
+            console.error("Chat initiation failure", error);
+            alert("Signal transmission failure. Check neural link connection.");
+        }
+    };
 
         return (
             <div className="min-h-screen bg-white text-black selection:bg-[#526E48]/30 pb-32">
@@ -152,23 +157,40 @@ export default function BookingStatusPage() {
                                                 )}
                                             </div>
                                             <div className="flex-1">
-                                                <p className={`text-[11px] font-black uppercase tracking-widest ${bk.documentStatus === 'Approved' ? 'text-green-600' : bk.documentStatus === 'Rejected' ? 'text-red-500' : 'text-[#526E48]'
-                                                    }`}>
-                                                    {bk.documentStatus === 'Approved' ? '✓ Document Approved' : bk.documentStatus === 'Rejected' ? '✕ Document Rejected' : '⧗ Under Review'}
+                                                <p className={`text-[11px] font-black uppercase tracking-widest ${
+                                                    bk.status === 'active_trip' ? 'text-[#526E48]' :
+                                                    bk.status === 'arrived' ? 'text-amber-600' :
+                                                    bk.status === 'upcoming_pickup' ? 'text-orange-500' :
+                                                    bk.documentStatus === 'Approved' ? 'text-green-600' :
+                                                    bk.documentStatus === 'Rejected' ? 'text-red-500' :
+                                                    'text-[#526E48]'
+                                                }`}>
+                                                    {bk.status === 'active_trip' ? '🚗 Trip in Progress' :
+                                                     bk.status === 'arrived' ? '📍 Customer Arrived' :
+                                                     bk.status === 'upcoming_pickup' ? '🔔 Pickup Upcoming' :
+                                                     bk.documentStatus === 'Approved' ? '✓ Document Approved' :
+                                                     bk.documentStatus === 'Rejected' ? '✕ Document Rejected' :
+                                                     '⧗ Under Review'}
                                                 </p>
                                                 <p className="text-[8px] font-mono font-bold text-zinc-300 uppercase tracking-widest mt-0.5">
                                                     Archive ID: {bk._id?.slice(-8).toUpperCase()}
                                                 </p>
                                             </div>
                                             {/* Action Buttons */}
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <Link
+                                                    href={`/bookings/${bk._id}`}
+                                                    className="px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-black bg-black/5 border border-black/5 hover:bg-black hover:text-white transition-all"
+                                                >
+                                                    View Details
+                                                </Link>
                                                 <button
                                                     onClick={() => handleInitiateChat(bk._id)}
                                                     className="px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-[#526E48] bg-[#526E48]/5 border border-[#526E48]/10 hover:bg-[#526E48]/10 transition-all flex items-center gap-2"
                                                 >
                                                     Chat with Host
                                                 </button>
-                                                {bk.status !== 'Confirmed' && (
+                                                {!['Confirmed', 'upcoming_pickup', 'arrived', 'active_trip'].includes(bk.status) && (
                                                     <button
                                                         onClick={() => handleCancelBooking(bk._id)}
                                                         className="px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-zinc-400 border border-black/5 hover:border-red-500/30 hover:text-red-500 transition-all"
@@ -176,7 +198,7 @@ export default function BookingStatusPage() {
                                                         Retract
                                                     </button>
                                                 )}
-                                                {bk.documentStatus === 'Approved' && bk.status !== 'Confirmed' && (
+                                                {bk.documentStatus === 'Approved' && bk.status === 'Pending' && (
                                                     <button
                                                         onClick={() => router.push(`/bookings/payment/${bk._id}`)}
                                                         className="h-11 px-6 bg-black text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-[#526E48] transition-all active:scale-[0.97] whitespace-nowrap flex items-center gap-2"
@@ -242,10 +264,6 @@ export default function BookingStatusPage() {
                                                         <div className="space-y-1.5">
                                                             <p className="text-[7px] font-black uppercase tracking-[0.3em] text-zinc-300">Nominee</p>
                                                             <p className="text-[11px] font-black uppercase text-black italic">{bk.nomineeName || 'N/A'}</p>
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                            <p className="text-[7px] font-black uppercase tracking-[0.3em] text-zinc-300">Protocol</p>
-                                                            <p className="text-[11px] font-black uppercase text-[#526E48] italic">{bk.bookingType === 'driver' ? 'Chauffeur' : 'Self Drive'}</p>
                                                         </div>
                                                         <div className="space-y-1.5">
                                                             <p className="text-[7px] font-black uppercase tracking-[0.3em] text-zinc-300">Comm_Link</p>

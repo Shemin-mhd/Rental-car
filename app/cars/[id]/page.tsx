@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, use, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useSearchParams } from "next/navigation";
-import { apiFetch } from "@/services/api";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
+import { apiFetch, getImageUrl } from "@/services/api";
 import LuxuryDatePicker from "@/components/ui/DatePicker";
 
 interface Car {
@@ -24,6 +24,7 @@ interface Car {
     withDriver: boolean;
     description?: string;
     isAvailable: boolean;
+    availableFrom?: string;
 }
 
 const LUXURY_PLACEHOLDERS = [
@@ -33,26 +34,21 @@ const LUXURY_PLACEHOLDERS = [
     "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&q=80&w=2000",
 ];
 
-const getImageUrl = (img?: string) => {
-    if (!img || img === "" || img === "null") return LUXURY_PLACEHOLDERS[0];
-    if (img.startsWith("http")) return img;
-    return `http://localhost:5000/uploads/${img}`;
-};
-
-export default function CarDetailsPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
-    const params = use(paramsPromise);
+export default function CarDetailsPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-white flex items-center justify-center">
                 <div className="w-8 h-8 border-2 border-[#526E48] border-t-transparent rounded-full animate-spin" />
             </div>
         }>
-            <CarDetailsContent id={params.id} />
+            <CarDetailsContent />
         </Suspense>
     );
 }
 
-function CarDetailsContent({ id }: { id: string }) {
+function CarDetailsContent() {
+    const params = useParams();
+    const id = params?.id as string;
     const searchParams = useSearchParams();
     const router = useRouter();
     const [car, setCar] = useState<Car | null>(null);
@@ -61,7 +57,6 @@ function CarDetailsContent({ id }: { id: string }) {
     const [username, setUsername] = useState("");
     const [similarCars, setSimilarCars] = useState<Car[]>([]);
     const [showLogout, setShowLogout] = useState(false);
-
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     useEffect(() => {
@@ -70,13 +65,9 @@ function CarDetailsContent({ id }: { id: string }) {
             if (token) {
                 const userStr = localStorage.getItem("user");
                 setIsLoggedIn(true);
-
                 if (userStr) {
                     const userObj = JSON.parse(userStr);
                     setUsername(userObj.name || userObj.username || userObj.email || "User");
-                } else {
-                    const payload = JSON.parse(atob(token.split(".")[1]));
-                    setUsername(payload.name || payload.username || payload.email || "User");
                 }
             } else {
                 setIsLoggedIn(false);
@@ -84,26 +75,29 @@ function CarDetailsContent({ id }: { id: string }) {
         } catch { }
     }, []);
 
-    const [plan, setPlan] = useState<"daily" | "weekly" | "monthly" | "custom">("daily");
-    const [serviceType, setServiceType] = useState<"self" | "driver">((searchParams.get("type") || "self") as "self" | "driver");
-    const [pickupDate, setPickupDate] = useState(searchParams.get("start") || "");
-    const [dropDate, setDropDate] = useState(searchParams.get("end") || "");
+    const initialStart = searchParams.get("start") || "";
+    const initialEnd = searchParams.get("end") || "";
+    const [plan, setPlan] = useState<"daily" | "weekly" | "monthly" | "custom">(
+        initialStart && initialEnd ? "custom" : "daily"
+    );
+    const [serviceType] = useState<"self">("self");
+    const [pickupDate, setPickupDate] = useState(initialStart);
+    const [dropDate, setDropDate] = useState(initialEnd);
 
     const getDaysForPlan = () => {
         if (plan === "monthly") return 30;
         if (plan === "weekly") return 7;
         if (plan === "daily") return 1;
         if (pickupDate && dropDate) {
-            return Math.max(1, Math.ceil((new Date(dropDate).getTime() - new Date(pickupDate).getTime()) / (1000 * 3600 * 24)) + 1);
+            return Math.max(1, Math.ceil((new Date(dropDate).getTime() - new Date(pickupDate).getTime()) / (1000 * 3600 * 24)));
         }
         return 1;
     };
     const days = getDaysForPlan();
 
-    // Surgical Multi-Rate Plan Logic - Silently Applying
     const getMultiplier = () => {
-        if (plan === "monthly") return 0.75; // 25% Off Silently
-        if (plan === "weekly") return 0.85;  // 15% Off Silently
+        if (plan === "monthly") return 0.75;
+        if (plan === "weekly") return 0.85;
         return 1.0;
     };
 
@@ -111,12 +105,12 @@ function CarDetailsContent({ id }: { id: string }) {
     const baseTotal = currentRate * days;
     const grandTotal = baseTotal;
 
-
-
     useEffect(() => {
         const fetchCarDetails = async () => {
+            if (!id) return;
             try {
                 const res = await apiFetch(`/cars/${id}`);
+                if (!res.ok) throw new Error("Car not found");
                 const data = await res.json();
                 setCar(data);
                 if (data.image) setActiveImage(getImageUrl(data.image));
@@ -147,14 +141,25 @@ function CarDetailsContent({ id }: { id: string }) {
         window.location.replace("/login");
     };
 
-    if (loading || !car) return null;
+    if (loading) return (
+        <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-[#526E48] border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
+
+    if (!car) return (
+        <div className="min-h-screen bg-white flex flex-col items-center justify-center space-y-4">
+            <h1 className="text-2xl font-black uppercase italic tracking-tighter text-black">Elite Asset <span className="text-red-500">Not Found</span></h1>
+            <Link href="/cars" className="bg-black text-white px-8 py-3 rounded-2xl text-[10px] uppercase font-black tracking-widest hover:bg-[#526E48] transition-all">Return to Fleet</Link>
+        </div>
+    );
 
     const userGallery = [car.image, ...(car.gallery || [])].filter(Boolean);
     const displayGallery = [...userGallery, ...LUXURY_PLACEHOLDERS].slice(0, 3);
 
     return (
         <div className="relative min-h-screen bg-white text-black selection:bg-[#526E48]/30 overflow-x-hidden font-sans antialiased text-[10px]">
-            {/* Header / Navbar */}
+            {/* Navbar */}
             <nav className="fixed top-0 inset-x-0 z-50 bg-white/60 backdrop-blur-xl border-b border-black/[0.04] px-8 h-14 flex items-center justify-between">
                 <Link href="/cars" className="p-2 border border-black/10 rounded-full hover:bg-[#526E48] hover:text-white transition-all text-[#526E48]">
                     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
@@ -169,49 +174,25 @@ function CarDetailsContent({ id }: { id: string }) {
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col items-end">
                             <span className="text-[7px] font-bold text-zinc-500 tracking-[0.2em] leading-none mb-1">Signed In</span>
-                            <span className="text-[10px] uppercase font-black tracking-widest text-[#526E48] leading-none truncate max-w-[120px]">{username || "User"}</span>
+                            <span className="text-[10px] uppercase font-black tracking-widest text-[#526E48] leading-none truncate max-w-[120px]">{username}</span>
                         </div>
-                        <div className="h-6 w-px bg-black/10" />
-                        <div className="relative">
-                            <button
-                                onClick={() => setShowLogout(!showLogout)}
-                                className="group flex items-center justify-center w-8 h-8 rounded-full border border-red-500/20 bg-red-500/5 hover:bg-red-500 hover:border-red-500 transition-all active:scale-95 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
-                                title="Logout"
-                            >
-                                <svg className="w-3.5 h-3.5 text-red-500 group-hover:text-white transition-colors ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                            </button>
-                            {showLogout && (
-                                <div className="absolute right-0 top-full mt-2 z-50">
-                                    <button
-                                        onClick={handleLogout}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-red-500/40 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-red-500 hover:bg-red-500 hover:text-white transition-all whitespace-nowrap shadow-2xl"
-                                    >
-                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                        </svg>
-                                        Logout
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                        <button onClick={() => setShowLogout(!showLogout)} className="w-8 h-8 rounded-full border border-red-500/20 bg-red-500/5 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                            <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        </button>
                     </div>
                 )}
             </nav>
 
             <main className="max-w-[1300px] mx-auto pt-28 px-8 pb-40">
-                {/* Balanced Breadcrumb */}
                 <div className="flex items-center gap-3 mb-10 text-[8px] font-black uppercase tracking-[0.25em] text-zinc-500">
-                    <span className="hover:text-black transition-colors cursor-pointer uppercase">{car.location}, KERALA</span>
+                    <span className="uppercase">{car.location}, KERALA</span>
                     <span className="text-black/5">/</span>
-                    <span className="hover:text-black transition-colors cursor-pointer uppercase">{car.category}</span>
+                    <span className="uppercase">{car.category}</span>
                     <span className="text-black/5">/</span>
                     <span className="text-[#526E48]/70 uppercase">{car.name}</span>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    {/* Hero Left */}
                     <div className="lg:col-span-7 space-y-10">
                         <section className="space-y-6">
                             <div className="space-y-3">
@@ -226,15 +207,11 @@ function CarDetailsContent({ id }: { id: string }) {
 
                             <div className="space-y-4">
                                 <div className="relative aspect-[16/9] rounded-[2rem] overflow-hidden bg-white border border-black/5 flex items-center justify-center shadow-xl group">
-                                    <AnimatePresence mode="wait">
-                                        <motion.div key={activeImage} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-                                            <Image src={activeImage || getImageUrl(car.image)} alt={car.name} fill className="object-cover group-hover:scale-[1.02] transition-transform duration-[3000ms]" priority unoptimized />
-                                        </motion.div>
-                                    </AnimatePresence>
+                                    <Image src={activeImage || getImageUrl(car.image)} alt={car.name} fill className="object-cover group-hover:scale-[1.02] transition-transform duration-[3000ms]" priority unoptimized />
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     {displayGallery.map((img, i) => (
-                                        <button key={i} onClick={() => setActiveImage(getImageUrl(img))} className={`relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${activeImage === getImageUrl(img) ? 'border-[#526E48]' : 'border-black/5 opacity-50 hover:opacity-100 hover:border-black/20'}`}>
+                                        <button key={i} onClick={() => setActiveImage(getImageUrl(img))} className={`relative aspect-[4/3] rounded-xl overflow-hidden border-2 transition-all ${activeImage === getImageUrl(img) ? 'border-[#526E48]' : 'border-black/5 opacity-50 hover:opacity-100'}`}>
                                             <Image src={getImageUrl(img)} alt={`thumb-${i}`} fill className="object-cover" unoptimized />
                                         </button>
                                     ))}
@@ -245,10 +222,10 @@ function CarDetailsContent({ id }: { id: string }) {
                                 {[
                                     { icon: "🪑", label: "Capacity", value: `${car.seats} Seats` },
                                     { icon: "⚙️", label: "Transmission", value: car.transmission },
-                                    { icon: "⛽", label: "Fuel Type", value: "Hybrid" },
-                                    { icon: "🏎️", label: "Max Power", value: "Premium" },
+                                    { icon: "⛽", label: "Fuel", value: "Premium" },
+                                    { icon: "🏎️", label: "Ride", value: "Elite" },
                                 ].map((spec) => (
-                                    <div key={spec.label} className="bg-white border border-black/5 rounded-xl p-4 flex flex-col items-center gap-1 hover:border-[#526E48]/30 transition-colors pointer-events-none">
+                                    <div key={spec.label} className="bg-white border border-black/5 rounded-xl p-4 flex flex-col items-center gap-1">
                                         <span className="text-xl mb-0.5">{spec.icon}</span>
                                         <span className="text-[10px] font-black uppercase italic text-black">{spec.value}</span>
                                         <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-widest">{spec.label}</span>
@@ -261,18 +238,17 @@ function CarDetailsContent({ id }: { id: string }) {
                                     <div className="w-8 h-0.5 bg-[#526E48]" /> Overview
                                 </h2>
                                 <p className="text-[10px] leading-relaxed text-zinc-500 font-medium whitespace-pre-wrap max-w-xl">
-                                    {car.description || `The ${car.name} ${car.model} is maintained to showroom perfection. Available for premium rental in ${car.location}. Meticulously cleaned and sanitized for your safety.`}
+                                    {car.description || `The ${car.name} is maintained to showroom perfection.`}
                                 </p>
                             </div>
                         </section>
                     </div>
 
-                    {/* Right Col: Booking Sidebar with Plan Switching Logic */}
                     <div className="lg:col-span-5">
                         <div className="sticky top-28 bg-white border border-black/5 rounded-[2.5rem] p-7 space-y-7 shadow-xl">
                             <div className="flex justify-between items-end border-b border-black/5 pb-6">
                                 <div>
-                                    <h3 className="text-2xl font-black italic tracking-tighter text-[#526E48]">₹{currentRate.toLocaleString()} <span className="text-zinc-500 text-[8px] uppercase not-italic tracking-widest font-black ml-1.5">/ {plan === 'daily' ? 'Day' : plan === 'weekly' ? 'Weekly Rate' : 'Monthly Rate'}</span></h3>
+                                    <h3 className="text-2xl font-black italic tracking-tighter text-[#526E48]">₹{currentRate.toLocaleString()} <span className="text-zinc-500 text-[8px] uppercase not-italic tracking-widest font-black ml-1.5">/ {plan}</span></h3>
                                 </div>
                                 <div className="bg-[#526E48]/10 px-3 py-1 rounded-full border border-[#526E48]/20">
                                     <span className="text-[8px] font-black uppercase tracking-widest text-[#526E48]">Elite Status</span>
@@ -281,135 +257,79 @@ function CarDetailsContent({ id }: { id: string }) {
 
                             <div className="space-y-6">
                                 <div className="space-y-2">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Select Booking Duration</p>
-                                        <span className="text-[7px] font-black uppercase tracking-tighter text-[#526E48]">Plan rate active</span>
-                                    </div>
-                                    <div className="flex gap-2 bg-white p-1 rounded-xl border border-black/5">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Duration</p>
+                                    <div className="flex gap-1 bg-white p-1 rounded-xl border border-black/5">
                                         {["daily", "weekly", "monthly", "custom"].map((p) => (
-                                            <button key={p} onClick={() => setPlan(p as any)} className={`flex-1 py-2.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${plan === p ? "bg-[#526E48] text-white shadow-lg shadow-[#526E48]/20 font-bold" : "text-black/40 hover:text-black"}`}>{p}</button>
+                                            <button key={p} onClick={() => setPlan(p as any)} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest ${plan === p ? "bg-[#526E48] text-white" : "text-black/40 hover:text-black"}`}>{p}</button>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Service Logic</p>
-                                    <div className="flex gap-2 bg-white p-1 rounded-xl border border-black/5">
-                                        <button onClick={() => setServiceType("self")} className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${serviceType === "self" ? "bg-[#526E48] text-white shadow-lg shadow-[#526E48]/20" : "text-black/40 hover:text-black"}`}>Self Drive</button>
-                                        <button onClick={() => setServiceType("driver")} className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${serviceType === "driver" ? "bg-[#526E48] text-white shadow-lg shadow-[#526E48]/20" : "text-black/40 hover:text-black"}`}>With Driver</button>
-                                    </div>
-                                </div>
+
 
                                 {plan === "custom" && (
                                     <div className="grid grid-cols-2 gap-3">
-                                        <LuxuryDatePicker
-                                            label="Pick-Up"
-                                            placeholder="Select Date"
-                                            value={pickupDate}
-                                            onChange={setPickupDate}
-                                            minDate={new Date().toISOString().split("T")[0]}
-                                        />
-                                        <LuxuryDatePicker
-                                            label="Return"
-                                            placeholder="Select Date"
-                                            value={dropDate}
-                                            onChange={setDropDate}
-                                            minDate={pickupDate || new Date().toISOString().split("T")[0]}
-                                        />
+                                        <LuxuryDatePicker label="Pick-Up" placeholder="Date" value={pickupDate} onChange={setPickupDate} />
+                                        <LuxuryDatePicker label="Return" placeholder="Date" value={dropDate} onChange={setDropDate} />
                                     </div>
                                 )}
 
-
-
-                                <div className="bg-white p-5 rounded-2xl border border-black/5 space-y-3">
-                                    <div className="flex justify-between items-center text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
-                                        <span>Plan Calculation ({days} {days === 1 ? 'Day' : 'Days'})</span>
-                                        <span className="text-black">₹{baseTotal.toLocaleString()}</span>
+                                <div className="bg-[#F8F9F3] p-6 rounded-2xl border border-black/5 space-y-4">
+                                    <div className="pb-4 border-b border-black/[0.03]">
+                                        <h4 className="text-sm font-black uppercase italic tracking-tighter text-black">{car.name} <span className="text-[#526E48]">{car.model}</span></h4>
+                                        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">{car.transmission} • {car.category} • {car.seats} Seats</p>
                                     </div>
-                                    <div className="h-px bg-black/5" />
+                                    <div className="space-y-2.5">
+                                        <div className="flex justify-between items-start text-[10px] font-bold text-zinc-500 tracking-widest uppercase">
+                                            <span>Pickup</span>
+                                            <span className="text-black text-right">{car.location}<br/>{pickupDate ? new Date(pickupDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 'TBD'} - 10:00 AM</span>
+                                        </div>
+                                        <div className="flex justify-between items-start text-[10px] font-bold text-zinc-500 tracking-widest uppercase mt-2">
+                                            <span>Return</span>
+                                            <span className="text-black text-right">{dropDate ? new Date(dropDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : (plan !== "custom" ? new Date(new Date().setDate(new Date().getDate() + days - 1)).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 'TBD')} - 6:00 PM</span>
+                                        </div>
+                                    </div>
+                                    <div className="h-px bg-black/[0.03] my-4" />
+                                    <div className="space-y-2.5">
+                                        <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 tracking-widest uppercase">
+                                            <span>Duration</span>
+                                            <span className="text-black">{days} {days === 1 ? 'Day' : 'Days'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 tracking-widest uppercase">
+                                            <span>Price / Day</span>
+                                            <span className="text-black">₹{currentRate.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    <div className="h-px bg-black/5 my-4" />
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-black text-black uppercase tracking-widest italic">Proceed to Pay</span>
-                                        <span className="text-2xl font-black italic text-[#526E48]">₹{grandTotal.toLocaleString()}</span>
+                                        <span className="text-[11px] font-black text-black uppercase tracking-widest italic">Total Investment</span>
+                                        <span className="text-3xl font-black italic text-[#526E48]">₹{grandTotal.toLocaleString()}</span>
                                     </div>
                                 </div>
 
                                 <button
                                     onClick={() => {
                                         if (!car.isAvailable) return;
-                                        if (!isLoggedIn) {
-                                            router.push("/register");
-                                            return;
-                                        }
-
-                                        let finalPickup = pickupDate;
-                                        let finalDrop = dropDate;
-
+                                        if (!isLoggedIn) { router.push("/register"); return; }
+                                        let finalPickup = pickupDate || new Date().toISOString().split("T")[0];
+                                        let finalDrop = dropDate || new Date().toISOString().split("T")[0];
                                         if (plan !== "custom") {
-                                            finalPickup = new Date().toISOString().split("T")[0];
-                                            const dropDateObj = new Date();
-                                            dropDateObj.setDate(dropDateObj.getDate() + days - 1);
-                                            finalDrop = dropDateObj.toISOString().split("T")[0];
-                                        } else if (!pickupDate || !dropDate) {
-                                            return;
+                                            const dObj = new Date(); dObj.setDate(dObj.getDate() + days - 1);
+                                            finalDrop = dObj.toISOString().split("T")[0];
                                         }
-
-                                        const params = new URLSearchParams({ start: finalPickup, end: finalDrop, type: serviceType, plan });
+                                        const params = new URLSearchParams({ start: finalPickup, end: finalDrop, plan });
                                         router.push(`/bookings/confirm/${car._id}?${params.toString()}`);
                                     }}
                                     disabled={!car.isAvailable || (plan === "custom" && (!pickupDate || !dropDate))}
-                                    className={`w-full py-4.5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] shadow-lg transition-all active:scale-95 ${!car.isAvailable
-                                        ? "bg-red-500/10 text-red-500/70 border border-red-500/20 cursor-not-allowed"
-                                        : (plan === "custom" && (!pickupDate || !dropDate))
-                                            ? "bg-black/5 text-zinc-400 border border-black/5 cursor-not-allowed opacity-50 shadow-none"
-                                            : "bg-[#526E48] text-white shadow-[#526E48]/20 hover:bg-[#3E5336]"
-                                        }`}
+                                    className={`w-full py-4.5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] transition-all ${!car.isAvailable ? "bg-red-500/10 text-red-500" : "bg-[#526E48] text-white shadow-lg"}`}
                                 >
-                                    {!car.isAvailable
-                                        ? "Currently Booked — Elite Hold"
-                                        : (plan === "custom" && (!pickupDate || !dropDate))
-                                            ? "Select Rental Window"
-                                            : `Instant Reservation — ₹${grandTotal.toLocaleString()}`}
+                                    {!car.isAvailable ? "Booked — Elite Hold" : `Instant Reservation — ₹${grandTotal.toLocaleString()}`}
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                {/* Recommended Rides */}
-                {similarCars.length > 0 && (
-                    <section className="mt-32 pt-20 border-t border-black/5 space-y-10">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-black uppercase italic tracking-tighter">Recommended <span className="text-[#526E48]">Rides</span></h2>
-                            <Link href="/cars" className="text-[8px] font-black uppercase tracking-widest text-[#526E48] border-b border-[#526E48]/30">Explore Entire Fleet</Link>
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                            {similarCars.map((sc) => (
-                                <Link key={sc._id} href={`/cars/${sc._id}`} className="group space-y-4 flex flex-col">
-                                    <div className="relative aspect-[4/3] rounded-[1.5rem] overflow-hidden bg-white border border-black/[0.03] group-hover:border-[#526E48]/40 transition-all duration-500 shadow-xl">
-                                        <Image src={getImageUrl(sc.image)} alt={sc.name} fill className="object-cover group-hover:scale-110 transition-transform duration-[2000ms] opacity-80 group-hover:opacity-100" unoptimized />
-                                    </div>
-
-                                    <button className="w-full bg-white group-hover:bg-[#526E48] border border-black/5 group-hover:border-[#526E48] text-[#526E48] group-hover:text-white py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all duration-300 shadow-md">
-                                        Complete Details →
-                                    </button>
-
-                                    <div className="px-2 space-y-1">
-                                        <h3 className="text-[10px] font-black uppercase italic tracking-tighter group-hover:text-[#526E48] transition-colors duration-300 text-black">{sc.name}</h3>
-                                        <div className="flex items-center justify-between mt-1">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-[#526E48] font-black italic text-[11px]">₹{sc.pricePerDay.toLocaleString()}</span>
-                                                <span className="text-[6px] font-bold text-zinc-500 uppercase tracking-widest">/ Day</span>
-                                            </div>
-                                            <span className="text-[7px] font-black uppercase tracking-widest text-black bg-[#526E48]/5 px-2 py-0.5 rounded-sm border border-[#526E48]/10">Elite</span>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    </section>
-                )}
             </main>
         </div>
     );
 }
-

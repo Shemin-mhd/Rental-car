@@ -18,12 +18,12 @@ import {
 
 export default function AddCarPage() {
     const router = useRouter();
-    const [step, setStep] = useState(0); 
+    const [step, setStep] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [images, setImages] = useState<(File | null)[]>([null, null, null]);
     const [previews, setPreviews] = useState<(string | null)[]>([null, null, null]);
-    
+
     // 🛡️ RC Document States
     const [rcFront, setRcFront] = useState<File | null>(null);
     const [rcBack, setRcBack] = useState<File | null>(null);
@@ -32,7 +32,7 @@ export default function AddCarPage() {
 
     const [carData, setCarData] = useState({
         name: "", model: "", year: new Date().getFullYear(), pricePerDay: "", seats: "4",
-        transmission: "Auto", location: "", category: "Luxury", selfDrive: true, withDriver: false,
+        transmission: "Auto", location: "", category: "Luxury",
         fuelType: "Petrol", engine: "", hp: "", topSpeed: "", acceleration: "",
         description: "",
         features: [] as string[]
@@ -83,7 +83,7 @@ export default function AddCarPage() {
                 if (key === 'features') formData.append(key, JSON.stringify(value));
                 else formData.append(key, String(value));
             });
-            
+
             if (images[0]) formData.append("image", images[0]);
             images.slice(1).forEach(img => { if (img) formData.append("gallery", img); });
 
@@ -171,7 +171,7 @@ export default function AddCarPage() {
                                                         )}
                                                         <input type="file" className="hidden" onChange={e => {
                                                             const f = e.target.files?.[0];
-                                                            if(f) { d.s(f); d.sp(URL.createObjectURL(f)); }
+                                                            if (f) { d.s(f); d.sp(URL.createObjectURL(f)); }
                                                         }} />
                                                     </label>
                                                 </div>
@@ -218,11 +218,7 @@ export default function AddCarPage() {
                                             </div>
 
                                             <div className="space-y-3">
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {[{ l: "SELF-DRIVE", v: carData.selfDrive, s: true }, { l: "WITH PILOT", v: carData.withDriver, s: false }].map(opt => (
-                                                        <button key={opt.l} type="button" onClick={() => setCarData({ ...carData, selfDrive: opt.s, withDriver: !opt.s })} className={`py-3 rounded-xl text-[7.5px] font-black tracking-[0.2em] border transition-all ${opt.v ? "bg-black text-white border-black shadow-lg" : "bg-zinc-50/50 text-black border-black/5 hover:border-black/10"}`}>{opt.l}</button>
-                                                    ))}
-                                                </div>
+
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {["Auto", "Manual"].map(t => (
                                                         <button key={t} type="button" onClick={() => setCarData({ ...carData, transmission: t })} className={`py-3 rounded-xl text-[7.5px] font-black tracking-[0.2em] border transition-all ${carData.transmission === t ? "bg-[#14532d] text-white border-[#14532d]" : "bg-zinc-50/50 text-black border-black/5"}`}>{t.toUpperCase()}</button>
@@ -260,7 +256,7 @@ export default function AddCarPage() {
                                             <p className="text-2xl font-black italic text-black tracking-tight">₹{Number(carData.pricePerDay).toLocaleString()}</p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-2 gap-8 border-b border-black/[0.02] pb-8">
                                         <div className="space-y-3">
                                             <p className="text-[7.5px] font-black text-black uppercase tracking-widest opacity-30 italic text-black">Ownership Records Attached</p>

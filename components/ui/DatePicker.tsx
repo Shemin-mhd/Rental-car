@@ -63,7 +63,7 @@ export default function LuxuryDatePicker({ value, onChange, minDate, placeholder
         const selectedDate = new Date(year, month, day);
         if (minDate && selectedDate < new Date(new Date(minDate).setHours(0,0,0,0))) return;
 
-        const formattedDate = selectedDate.toISOString().split("T")[0];
+        const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         onChange(formattedDate);
         setIsOpen(false);
     };
@@ -106,10 +106,10 @@ export default function LuxuryDatePicker({ value, onChange, minDate, placeholder
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                        initial={{ opacity: 0, y: -10, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                        className="absolute bottom-full left-0 mb-3 z-[100] w-[260px] bg-white border border-black/10 rounded-2xl p-4 shadow-2xl backdrop-blur-2xl"
+                        exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                        className="absolute top-full left-0 mt-3 z-[100] w-[260px] bg-white border border-black/10 rounded-2xl p-4 shadow-2xl backdrop-blur-2xl"
                     >
                         <div className="flex items-center justify-between mb-4 px-1">
                             <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-black/5 rounded-lg transition-colors">
@@ -151,7 +151,10 @@ export default function LuxuryDatePicker({ value, onChange, minDate, placeholder
 
                         <div className="mt-4 pt-4 border-t border-black/5 flex items-center justify-between">
                             <button type="button" onClick={() => onChange("")} className="text-[7px] font-black uppercase tracking-widest text-zinc-500 hover:text-red-500 transition-colors">Clear</button>
-                            <button type="button" onClick={() => onChange(new Date().toISOString().split("T")[0])} className="text-[7px] font-black uppercase tracking-widest text-[#526E48] hover:brightness-125">Today</button>
+                            <button type="button" onClick={() => {
+                                const t = new Date();
+                                onChange(`${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`);
+                            }} className="text-[7px] font-black uppercase tracking-widest text-[#526E48] hover:brightness-125">Today</button>
                         </div>
                     </motion.div>
                 )}

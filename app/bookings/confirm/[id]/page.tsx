@@ -162,7 +162,7 @@ function BookingConfirmContent({ id }: { id: string }) {
     const router = useRouter();
     const [car, setCar] = useState<Car | null>(null);
     const [loading, setLoading] = useState(true);
-    const [bookingType] = useState(searchParams.get("type") || "self");
+
     const [startDate] = useState(searchParams.get("start") || "");
     const [endDate] = useState(searchParams.get("end") || "");
     const [submitted, setSubmitted] = useState(false); // show errors only after first attempt
@@ -214,7 +214,7 @@ function BookingConfirmContent({ id }: { id: string }) {
     const currentStep = !personalDone ? 0 : !uploadsDone ? 1 : 2;
 
     const days = startDate && endDate
-        ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 3600 * 24)) + 1)
+        ? Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 3600 * 24)))
         : 1;
     const baseTotal = car ? car.pricePerDay * days : 0;
 
@@ -246,7 +246,7 @@ function BookingConfirmContent({ id }: { id: string }) {
             formDataToSubmit.append("carId", id);
             formDataToSubmit.append("startDate", startDate);
             formDataToSubmit.append("endDate", endDate);
-            formDataToSubmit.append("bookingType", bookingType);
+
             formDataToSubmit.append("fullName", formData.fullName);
             formDataToSubmit.append("nomineeName", formData.nomineeName);
             formDataToSubmit.append("primaryPhone", formData.primaryPhone);
@@ -263,7 +263,7 @@ function BookingConfirmContent({ id }: { id: string }) {
 
             const data = await res.json();
             if (res.ok) {
-                const p = new URLSearchParams({ start: startDate, end: endDate, type: bookingType });
+                const p = new URLSearchParams({ start: startDate, end: endDate });
                 router.push(`/bookings/payment/${data.bookingId}?${p.toString()}`);
             } else {
                 alert(data.message || "Archive transmission failed");

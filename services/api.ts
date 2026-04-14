@@ -99,11 +99,18 @@ async function refreshTokens(): Promise<boolean> {
 /**
  * Get full image URL
  */
-export function getImageUrl(path: string | undefined): string {
-  if (!path) return "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=800";
-  if (path.startsWith("http")) return path;
+export function getImageUrl(path: string | undefined | null): string {
+  const LUXURY_PLACEHOLDER = "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=2000";
+  
+  if (!path || path === "" || path === "null" || path === "undefined") {
+    return LUXURY_PLACEHOLDER;
+  }
+  
+  if (path.startsWith("http")) {
+    return path;
+  }
 
-  // Default Backend Uploads Base URL
+  // Use the IP address from .env.local
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
   return `${BASE_URL}/uploads/${path}`;
 }

@@ -121,9 +121,6 @@ export default function BookingHistoryPage() {
                                                 <p className="text-sm font-black uppercase italic tracking-tighter text-black group-hover:text-[#526E48] transition-colors truncate mb-1">
                                                     {bk.carId?.name || "Classified Asset"}
                                                 </p>
-                                                <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${bk.bookingType === 'driver' ? 'border-[#526E48]/20 text-[#526E48] bg-[#526E48]/5' : 'border-black/5 text-zinc-400 bg-zinc-50'}`}>
-                                                    {bk.bookingType === 'driver' ? 'Chauffeur' : 'Self-Drive'}
-                                                </span>
                                             </div>
                                         </div>
                                         <div className="col-span-3 hidden sm:block">
@@ -138,14 +135,63 @@ export default function BookingHistoryPage() {
                                             <p className="text-base font-black italic text-[#526E48] mb-1.5 leading-none">
                                                 ₹{bk.totalPrice?.toLocaleString() || "0"}
                                             </p>
-                                            <p className={`text-[8px] font-black tracking-[0.2em] uppercase inline-flex items-center gap-1.5 px-2 py-1 rounded-md border ${bk.status === 'Confirmed' || bk.status === 'Ongoing' ? 'text-green-600 border-green-500/10 bg-green-500/[0.02]' : bk.status === 'Pending' ? 'text-[#526E48] border-[#526E48]/10 bg-[#526E48]/[0.02]' : 'text-red-500 border-red-500/10 bg-red-500/[0.02]'}`}>
-                                                /// {bk.status}
+                                            <p className={`text-[8px] font-black tracking-[0.2em] uppercase inline-flex items-center gap-1.5 px-2 py-1 rounded-md border ${
+                                                bk.status === 'active_trip'     ? 'text-[#526E48]  border-[#526E48]/10  bg-[#526E48]/[0.02]' :
+                                                bk.status === 'arrived'         ? 'text-amber-600  border-amber-200      bg-amber-50/50' :
+                                                bk.status === 'upcoming_pickup' ? 'text-orange-500 border-orange-200     bg-orange-50/50' :
+                                                bk.status === 'Confirmed'       ? 'text-blue-600   border-blue-200       bg-blue-50/50' :
+                                                bk.status === 'Completed'       ? 'text-green-600  border-green-500/10   bg-green-500/[0.02]' :
+                                                bk.status === 'Pending'         ? 'text-[#526E48]  border-[#526E48]/10   bg-[#526E48]/[0.02]' :
+                                                                                  'text-red-500     border-red-500/10      bg-red-500/[0.02]'
+                                            }`}>
+                                                /// {
+                                                    bk.status === 'active_trip'     ? 'Active Trip' :
+                                                    bk.status === 'arrived'         ? 'Arrived' :
+                                                    bk.status === 'upcoming_pickup' ? 'Pickup Soon' :
+                                                    bk.status
+                                                }
                                             </p>
                                         </div>
                                         <div className="col-span-12 sm:col-span-5 md:col-span-2 text-right flex flex-col items-end gap-3">
                                             <span className={`inline-block px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border ${bk.documentStatus === 'Approved' ? 'bg-green-500/[0.02] text-green-600 border-green-500/10' : bk.documentStatus === 'Rejected' ? 'bg-red-500/[0.02] text-red-500 border-red-500/10' : 'bg-black/[0.02] text-zinc-400 border-black/5'}`}>
                                                 Log: {bk.documentStatus}
                                             </span>
+
+                                            {/* ── Active booking: next-step guidance ── */}
+                                            {['Confirmed', 'upcoming_pickup', 'arrived', 'active_trip'].includes(bk.status) && (
+                                                <div className={`w-full max-w-[200px] rounded-xl border p-3 text-left ${
+                                                    bk.status === 'arrived'     ? 'bg-amber-50 border-amber-200' :
+                                                    bk.status === 'active_trip' ? 'bg-[#526E48]/5 border-[#526E48]/20' :
+                                                    'bg-blue-50 border-blue-200'
+                                                }`}>
+                                                    <p className={`text-[7px] font-black uppercase tracking-widest mb-1 ${
+                                                        bk.status === 'arrived'     ? 'text-amber-600' :
+                                                        bk.status === 'active_trip' ? 'text-[#526E48]' :
+                                                        'text-blue-600'
+                                                    }`}>
+                                                        {bk.status === 'Confirmed'       ? '📍 Next Step' :
+                                                         bk.status === 'upcoming_pickup' ? '🔔 Pickup Soon' :
+                                                         bk.status === 'arrived'         ? '⏳ Waiting' :
+                                                         '🚗 Trip Active'}
+                                                    </p>
+                                                    <p className="text-[8px] font-bold text-zinc-500 leading-snug">
+                                                        {bk.status === 'Confirmed'       ? 'Go to pickup location & mark arrival' :
+                                                         bk.status === 'upcoming_pickup' ? 'Head to pickup location soon' :
+                                                         bk.status === 'arrived'         ? 'Waiting for host to hand over' :
+                                                         `Return by ${new Date(bk.endDate).toLocaleDateString('en-GB')}`}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* ── View Details button ── */}
+                                            {['Confirmed', 'upcoming_pickup', 'arrived', 'active_trip'].includes(bk.status) && (
+                                                <Link
+                                                    href={`/bookings/${bk._id}`}
+                                                    className="w-full max-w-[140px] text-center py-2.5 bg-black text-white rounded-xl text-[8px] font-black uppercase tracking-[0.15em] hover:bg-[#526E48] transition-all shadow-lg block"
+                                                >
+                                                    View Details →
+                                                </Link>
+                                            )}
 
                                             <button
                                                 onClick={() => handleInitiateChat(bk._id)}

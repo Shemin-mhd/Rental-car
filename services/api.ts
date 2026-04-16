@@ -111,7 +111,7 @@ export function getImageUrl(path: string | undefined | null): string {
   }
 
   // Use the IP address from .env.local
-  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://rental-car-backend-7np6.onrender.com/api";
   return `${BASE_URL}/uploads/${path}`;
 }
 

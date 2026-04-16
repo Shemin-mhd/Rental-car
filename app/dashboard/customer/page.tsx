@@ -91,7 +91,7 @@ export default function HostDashboard() {
     }, [autoTrackId]);
 
     useEffect(() => {
-        const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000");
+        const socket = io(process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com");
         socket.on("connect", () => {
             console.log("Tactical Uplink Established 🛰️");
             const userId = localStorage.getItem("userId");

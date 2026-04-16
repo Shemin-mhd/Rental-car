@@ -18,7 +18,7 @@ export default function AdminDashboard() {
 
     // 🔱 Real-time Synchronization Bridge
     useEffect(() => {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com";
         const socket = io(API_URL, { transports: ["websocket"] });
 
         socket.on("connect", () => socket.emit("join", "admin-channel"));
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
     const getFullUrl = (path: string) => {
         if (!path) return "";
         if (path.startsWith("http") || path.startsWith("data:")) return path;
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com";
         return `${API_URL}/uploads/${path}`;
     };
 

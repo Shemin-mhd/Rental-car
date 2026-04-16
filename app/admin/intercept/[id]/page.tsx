@@ -38,7 +38,7 @@ export default function InterceptPage({ params }: { params: Promise<{ id: string
     });
 
     useEffect(() => {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com";
         const socket = io(API_URL, { transports: ["websocket"] });
 
         socket.on("connect", () => {

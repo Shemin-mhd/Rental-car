@@ -23,6 +23,7 @@ export default function InterceptPage({ params }: { params: Promise<{ id: string
 
     // 🔱 Load Leaflet for icons (Client-side)
     useEffect(() => {
+        // @ts-ignore
         import("leaflet").then((leaflet) => {
             setL(leaflet.default);
         });

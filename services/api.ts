@@ -2,7 +2,7 @@
  * api.ts - A Fetch-based API utility with automatic token refreshing
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://rental-car-backend-7np6.onrender.com/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 interface FetchOptions extends RequestInit {
   headers?: Record<string, string>;

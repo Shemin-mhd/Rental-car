@@ -10,8 +10,9 @@ import { MessageSquare, LayoutDashboard, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function ChatDashboardPage() {
+function ChatDashboardContent() {
   const searchParams = useSearchParams();
   const chatIdFromUrl = searchParams.get("id");
   const { setChats, setActiveChat, setMessages, activeChat, chats } = useChatStore();
@@ -90,4 +91,16 @@ export default function ChatDashboardPage() {
       </main>
     </div>
   );
+}
+
+export default function ChatDashboardPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-white flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-[#14532d] border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
+            <ChatDashboardContent />
+        </Suspense>
+    );
 }

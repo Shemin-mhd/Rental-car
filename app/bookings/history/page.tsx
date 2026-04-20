@@ -34,6 +34,14 @@ export default function BookingHistoryPage() {
             }
         };
         fetchBookings();
+
+        // 💳 Load Razorpay SDK for fine settlements
+        if (!document.getElementById("razorpay-sdk")) {
+            const script = document.createElement("script");
+            script.id = "razorpay-sdk";
+            script.src = "https://checkout.razorpay.com/v1/checkout.js";
+            document.head.appendChild(script);
+        }
     }, []);
 
     const handleCancelBooking = async (bookingId: string) => {
@@ -132,9 +140,14 @@ export default function BookingHistoryPage() {
                                             </p>
                                         </div>
                                         <div className="col-span-3 hidden md:block">
-                                            <p className="text-base font-black italic text-[#526E48] mb-1.5 leading-none">
-                                                ₹{bk.totalPrice?.toLocaleString() || "0"}
+                                            <p className="text-base font-black italic text-black mb-1.5 leading-none">
+                                                ₹{((bk.totalPrice || 0) + (bk.lateFine || 0)).toLocaleString()}
                                             </p>
+                                            {bk.lateFine > 0 && (
+                                                <p className={`text-[8px] font-black tracking-widest uppercase mb-1.5 italic ${bk.finePaid ? "text-emerald-500" : "text-[#ef4444]"}`}>
+                                                    {bk.finePaid ? "✓ Fine Settled" : `+ ₹${bk.lateFine.toLocaleString()} Fine`}
+                                                </p>
+                                            )}
                                             <p className={`text-[8px] font-black tracking-[0.2em] uppercase inline-flex items-center gap-1.5 px-2 py-1 rounded-md border ${
                                                 bk.status === 'active_trip'     ? 'text-[#526E48]  border-[#526E48]/10  bg-[#526E48]/[0.02]' :
                                                 bk.status === 'arrived'         ? 'text-amber-600  border-amber-200      bg-amber-50/50' :
@@ -199,6 +212,44 @@ export default function BookingHistoryPage() {
                                             >
                                                 Chat with Host
                                             </button>
+
+                                            {bk.lateFine > 0 && !bk.finePaid && (
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            const res = await apiFetch(`/bookings/${bk._id}/fine-payment`, { method: "POST" });
+                                                            const data = await res.json();
+                                                            if (!res.ok) throw new Error(data.message);
+
+                                                            const options = {
+                                                                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                                                                amount: data.amount * 100,
+                                                                currency: "INR",
+                                                                name: "Rental Garage - Settlement",
+                                                                description: `Settle Fine for RG-${bk._id.slice(-6).toUpperCase()}`,
+                                                                order_id: data.orderId,
+                                                                handler: async (response: any) => {
+                                                                    const confirmRes = await apiFetch(`/bookings/${bk._id}/fine-confirm`, {
+                                                                        method: "POST",
+                                                                        body: JSON.stringify({ paymentId: response.razorpay_payment_id })
+                                                                    });
+                                                                    if (confirmRes.ok) {
+                                                                        alert("✅ MISSION SETTLED: Fine cleared successfully.");
+                                                                        window.location.reload();
+                                                                    }
+                                                                },
+                                                                theme: { color: "#526E48" }
+                                                            };
+                                                            const rzp = new (window as any).Razorpay(options);
+                                                            rzp.open();
+                                                        } catch (err: any) { alert(err.message || "Payment initiation failed"); }
+                                                    }}
+                                                    className="w-full max-w-[140px] py-2.5 bg-green-600 text-white rounded-xl text-[8px] font-black uppercase tracking-[0.15em] hover:bg-black transition-all shadow-lg flex items-center justify-center gap-2"
+                                                >
+                                                    <span className="w-1 h-1 rounded-full bg-white animate-ping" />
+                                                    Settle Fine
+                                                </button>
+                                            )}
 
                                             {bk.status === 'Pending' && (
                                                 <div className="flex flex-col items-end gap-2 w-full max-w-[140px]">

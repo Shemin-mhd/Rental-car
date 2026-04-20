@@ -50,6 +50,13 @@ function LoginContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
             });
+            
+            // Check for non-JSON responses before parsing
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error(`Satellite link failed: Expected JSON but received ${contentType || "HTML"}. Verify the backend is operational.`);
+            }
+
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Uplink denied: Credential verification failed.");
 
@@ -90,6 +97,12 @@ function LoginContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
             });
+
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error(`Protocol mismatch: Expected JSON but received ${contentType || "HTML/Text"}. Protocol update required.`);
+            }
+
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Uplink denied: Protocol transmission failed.");
             setForgotMessage(data.message || "Password reset link sent to your email.");
@@ -277,6 +290,7 @@ function LoginContent() {
                                         <div className="flex justify-between items-center ml-1 pr-1">
                                             <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black italic">Password</label>
                                             <button
+                                                suppressHydrationWarning
                                                 type="button"
                                                 onClick={() => { setIsForgotPassword(true); setError(""); setForgotMessage(""); }}
                                                 className="text-[8px] text-black/40 hover:text-[#526E48] transition-colors font-black uppercase tracking-[0.3em] italic"
@@ -308,6 +322,7 @@ function LoginContent() {
                                 whileTap={{ scale: 0.98 }}
                                 type="submit"
                                 disabled={loading}
+                                suppressHydrationWarning
                                 className="w-full mt-4 bg-black text-white hover:bg-[#526E48] font-black rounded-2xl px-6 py-5 text-[10px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 transition-all disabled:opacity-50 cursor-pointer shadow-2xl"
                             >
                                 {loading ? (
@@ -329,6 +344,7 @@ function LoginContent() {
                             className="mt-8 text-center"
                         >
                             <button
+                                suppressHydrationWarning
                                 onClick={() => { setIsForgotPassword(false); setForgotMessage(""); setError(""); }}
                                 className="text-black/40 text-[9px] font-black uppercase tracking-widest hover:text-black transition-colors italic"
                             >
@@ -351,6 +367,7 @@ function LoginContent() {
                         transition={{ delay: 1.05 }}
                         type="button"
                         onClick={handleGoogleLogin}
+                        suppressHydrationWarning
                         className="w-full mb-8 bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 hover:bg-white text-black/50 hover:text-black font-black rounded-2xl px-6 py-4 text-[9px] uppercase tracking-[0.3em] flex items-center justify-center gap-4 transition-all italic shadow-sm"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">

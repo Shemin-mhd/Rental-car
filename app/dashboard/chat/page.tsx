@@ -13,7 +13,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 function ChatDashboardContent() {
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); 
   const chatIdFromUrl = searchParams.get("id");
   const { setChats, setActiveChat, setMessages, activeChat, chats } = useChatStore();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -25,12 +25,12 @@ function ChatDashboardContent() {
     setIsAdmin(userIsAdmin);
 
     // 🔱 Initial Sync: Load all authorized tactical threads
-    const fetchChats = async () => {
-      try {
-        const endpoint = userIsAdmin ? "/chat/admin/all-chats" : "/chat/user-chats";
-        const res = await apiFetch(endpoint);
-        const data = await res.json();
-        setChats(data);
+        const fetchChats = async () => {
+          try {
+            const endpoint = userIsAdmin ? "/chat/admin/all-chats" : "/chat/user-chats";
+            const res = await apiFetch(endpoint);
+            const data = await res.json();
+            setChats(data);
 
         // 🎯 Auto-Select Thread if parameter exists
         if (chatIdFromUrl) {

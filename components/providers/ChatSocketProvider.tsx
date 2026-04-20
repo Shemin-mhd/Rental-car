@@ -80,7 +80,16 @@ export const ChatSocketProvider = ({ children }: { children: ReactNode }) => {
     };
 
     useEffect(() => {
-        const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : null;
+        let user = null;
+        try {
+            const storedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+            if (storedUser && storedUser !== "undefined" && storedUser.startsWith("{")) {
+                user = JSON.parse(storedUser);
+            }
+        } catch (e) {
+            console.error("Critical: User identity corruption detected.", e);
+            localStorage.removeItem("user");
+        }
         if (!user?.id) return;
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
@@ -91,6 +100,12 @@ export const ChatSocketProvider = ({ children }: { children: ReactNode }) => {
             socket.emit("register-user", user.id);
             // Join personal notification room
             socket.emit("join-user-room", user.id);
+            
+            // Join global admin command room if authorized
+            if (user.role === 'admin') {
+                console.log("💂 Admin Authority Verified. Joining Tactical Command Room.");
+                socket.emit("join-admin-room");
+            }
         });
 
         // ── Chat events ─────────────────────────────────────────────────────

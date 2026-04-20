@@ -52,7 +52,7 @@ export default function ChatWindow() {
 
     const messageData = {
       chatId: activeChat._id,
-      senderId: currentUser.id,
+      senderId: currentUser.id || currentUser._id,
       receiverId: otherParticipant._id,
       text: inputText.trim(),
       messageType: "text" as const
@@ -62,18 +62,18 @@ export default function ChatWindow() {
     setInputText("");
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    socket.emit("stop-typing", { chatId: activeChat._id, userId: currentUser.id });
+    socket.emit("stop-typing", { chatId: activeChat._id, userId: currentUser.id || currentUser._id });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
     if (activeChat && socket) {
-      socket.emit("typing", { chatId: activeChat._id, userId: currentUser.id });
+      socket.emit("typing", { chatId: activeChat._id, userId: currentUser.id || currentUser._id });
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
       typingTimeoutRef.current = setTimeout(() => {
-        socket.emit("stop-typing", { chatId: activeChat._id, userId: currentUser.id });
+        socket.emit("stop-typing", { chatId: activeChat._id, userId: currentUser.id || currentUser._id });
       }, 3000);
     }
   };
@@ -124,10 +124,11 @@ export default function ChatWindow() {
         </div>
       </div>
 
-      {/* 🔱 Message Vault */}
+      {/* ── Message Vault ── */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#FAFAFA]/50">
         {messages.map((msg, index) => {
-          const isMe = msg.senderId === currentUser?._id;
+          const currentId = currentUser?.id || currentUser?._id;
+          const isMe = String(msg.senderId) === String(currentId);
           return (
             <div key={msg._id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[75%] space-y-1 ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>

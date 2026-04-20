@@ -1,62 +1,140 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/services/api";
-import { io } from "socket.io-client";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
-import Image from "next/image";
+import { apiFetch, getImageUrl } from "@/services/api";
+import {
+    LayoutDashboard,
+    Car,
+    Users,
+    ClipboardList,
+    Navigation,
+    ShieldCheck,
+    MessageSquare,
+    ChevronDown,
+    Activity,
+    LogOut,
+    Power,
+    CheckCircle2,
+    XCircle,
+    User as UserIcon,
+    FileText,
+    ExternalLink,
+    Zap,
+    TrendingUp,
+    Briefcase
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
-export default function AdminDashboard() {
+// 🔱 Tactical Design Utility
+const getFullUrl = (img: string) => getImageUrl(img);
+
+const StatusSelector = ({ currentStatus, onUpdate }: { currentStatus: string, onUpdate: (s: string) => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const statuses = ['Pending', 'Confirmed', 'arrived', 'active_trip', 'Completed', 'Cancelled'];
+
+    const getTheme = (s: string) => {
+        const status = s.toLowerCase();
+        if (status === 'completed') return 'bg-emerald-50 text-emerald-700 border-emerald-200 dot-emerald-500';
+        if (status === 'cancelled') return 'bg-red-50 text-red-700 border-red-200 dot-red-500';
+        if (status === 'active_trip') return 'bg-blue-50 text-blue-700 border-blue-200 dot-blue-500';
+        if (status === 'arrived') return 'bg-orange-50 text-orange-700 border-orange-200 dot-orange-500';
+        if (status === 'confirmed') return 'bg-indigo-50 text-indigo-700 border-indigo-200 dot-indigo-500';
+        return 'bg-amber-50 text-amber-700 border-amber-200 dot-amber-500';
+    };
+
+    const themeClass = getTheme(currentStatus);
+    const dotColor = themeClass.split('dot-')[1];
+
+    return (
+        <div className="relative inline-block w-40">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full pl-8 pr-4 py-2 rounded-full text-[10px] font-bold border transition-all shadow-sm uppercase flex items-center justify-between ${themeClass.split('dot-')[0]}`}
+            >
+                <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full`} style={{
+                        backgroundColor:
+                            currentStatus === 'Completed' ? '#10b981' :
+                                currentStatus === 'Cancelled' ? '#ef4444' :
+                                    currentStatus === 'active_trip' ? '#3b82f6' :
+                                        currentStatus === 'arrived' ? '#f97316' :
+                                            currentStatus === 'Confirmed' ? '#6366f1' : '#f59e0b'
+                    }} />
+                    {currentStatus}
+                </div>
+                <ChevronDown size={12} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <>
+                        <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
+                        <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute top-full mt-2 left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-2xl p-2 z-[70] overflow-hidden"
+                        >
+                            {statuses.map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => {
+                                        onUpdate(s);
+                                        setIsOpen(false);
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 rounded-xl transition-all flex items-center gap-3 group"
+                                >
+                                    <div className={`w-1.5 h-1.5 rounded-full`}
+                                        style={{
+                                            backgroundColor: s === 'Completed' ? '#10b981' :
+                                                s === 'Cancelled' ? '#ef4444' :
+                                                    s === 'active_trip' ? '#3b82f6' :
+                                                        s === 'arrived' ? '#f97316' :
+                                                            s === 'Confirmed' ? '#6366f1' : '#f59e0b'
+                                        }} />
+                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${s === currentStatus ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                                        {s}
+                                    </span>
+                                </button>
+                            ))}
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+export default function TacticalMinimalistCommand() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState("Overview");
-    const [openStatusId, setOpenStatusId] = useState<string | null>(null);
-    const [notification, setNotification] = useState<{ msg: string; type: 'success' | 'info' } | null>(null);
 
-    // 🔱 Real-time Synchronization Bridge
-    useEffect(() => {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com";
-        const socket = io(API_URL, { transports: ["websocket"] });
+    // 💰 Dynamic Tactical Auditor: Calculate live fine for active assets (₹100/hr)
+    const calculateLiveFine = (booking: any) => {
+        if (booking.status !== 'active_trip') return 0;
+        const now = new Date();
+        const scheduledEnd = new Date(booking.endDate);
+        if (now <= scheduledEnd) return 0;
 
-        socket.on("connect", () => socket.emit("join", "admin-channel"));
-        socket.on("newBookingSubmitted", () => {
-            queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
-            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-        });
+        const diffMs = now.getTime() - scheduledEnd.getTime();
+        const diffHrs = Math.ceil(diffMs / (1000 * 3600));
+        return diffHrs * 100;
+    };
 
-        socket.on("customerArrived", (data) => {
-            setNotification({
-                msg: `🚨 ALERT: ${data.fullName} has arrived for ${data.message.split('for ')[1] || 'pickup'}`,
-                type: 'info'
-            });
-            queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
-        });
-
-        return () => { socket.disconnect(); };
-    }, [queryClient]);
-
-    // 🔱 Sovereign Data Streams (Queries)
-    const { data: stats = {}, isLoading: statsLoading } = useQuery({
-        queryKey: ["adminStats"],
+    // ── Data Ingress ──
+    const { data: allBookings = [] } = useQuery({
+        queryKey: ["adminBookings"],
         queryFn: async () => {
-            const res = await apiFetch("/dashboard/admin");
+            const res = await apiFetch("/dashboard/admin/bookings");
             const data = await res.json();
-            return data.stats || {};
+            return Array.isArray(data) ? data : [];
         }
     });
 
-    const { data: users = [], isLoading: usersLoading } = useQuery({
-        queryKey: ["adminUsers"],
-        queryFn: async () => {
-            const res = await apiFetch("/dashboard/admin/users");
-            return res.json();
-        }
-    });
-
-    const { data: cars = [], isLoading: carsLoading } = useQuery({
+    const { data: allCars = [] } = useQuery({
         queryKey: ["adminCars"],
         queryFn: async () => {
             const res = await apiFetch("/dashboard/admin/cars");
@@ -64,599 +142,738 @@ export default function AdminDashboard() {
         }
     });
 
-    const { data: allBookings = [], isLoading: bookingsLoading } = useQuery({
-        queryKey: ["adminBookings"],
+    const { data: users = [] } = useQuery({
+        queryKey: ["adminUsers"],
         queryFn: async () => {
-            const res = await apiFetch("/dashboard/admin/bookings");
+            const res = await apiFetch("/dashboard/admin/users");
             return res.json();
         }
     });
 
-    // 🔱 Operational Handlers (Mutations)
-    const verifyUserMutation = useMutation({
-        mutationFn: async ({ id, status, reason }: any) => {
-            const res = await apiFetch(`/dashboard/admin/verify-user/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status, rejectionReason: reason })
-            });
+    const { data: allChats = [] } = useQuery({
+        queryKey: ["adminChats"],
+        queryFn: async () => {
+            const res = await apiFetch("/chat/admin/all-chats");
             return res.json();
-        },
-        onSuccess: (data) => {
-            setNotification({ msg: data.message || "User status updated", type: 'success' });
-            queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
-            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-            setTimeout(() => setNotification(null), 3000);
         }
     });
 
-    const verifyVehicleMutation = useMutation({
-        mutationFn: async ({ id, status, reason }: any) => {
-            const res = await apiFetch(`/dashboard/admin/verify-vehicle/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status, rejectionReason: reason })
-            });
+    const { data: pendingUsers = [] } = useQuery({
+        queryKey: ["pendingUsers"],
+        queryFn: async () => {
+            const res = await apiFetch("/dashboard/admin/pending-users");
             return res.json();
-        },
-        onSuccess: (data) => {
-            setNotification({ msg: data.message || "Vehicle status updated", type: 'success' });
-            queryClient.invalidateQueries({ queryKey: ["adminCars"] });
-            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-            setTimeout(() => setNotification(null), 3000);
         }
     });
 
-    const deleteUserMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await apiFetch(`/dashboard/admin/users/${id}`, { method: "DELETE" });
+    const { data: pendingCars = [] } = useQuery({
+        queryKey: ["pendingCars"],
+        queryFn: async () => {
+            const res = await apiFetch("/dashboard/admin/pending-vehicles");
             return res.json();
-        },
-        onSuccess: (data) => {
-            setNotification({ msg: data.message || "User removed", type: 'success' });
-            queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
-            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
         }
     });
 
-    const deleteCarMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await apiFetch(`/dashboard/admin/cars/${id}`, { method: "DELETE" });
+    const { data: statsData = {} } = useQuery({
+        queryKey: ["adminStats"],
+        queryFn: async () => {
+            const res = await apiFetch("/dashboard/admin");
             return res.json();
-        },
-        onSuccess: (data) => {
-            setNotification({ msg: data.message || "Vehicle deleted", type: 'success' });
-            queryClient.invalidateQueries({ queryKey: ["adminCars"] });
-            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
         }
     });
 
-    const toggleBlockMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await apiFetch(`/dashboard/admin/users/${id}/block`, { method: "PATCH" });
-            return res.json();
-        },
-        onSuccess: (data) => {
-            setNotification({ msg: data.message, type: 'success' });
-            queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
-        }
-    });
+    const stats = statsData.stats || statsData;
 
-    const updateBookingStatusMutation = useMutation({
-        mutationFn: async ({ id, status }: { id: string; status: string }) => {
-            const res = await apiFetch(`/dashboard/admin/bookings/${id}/status`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status })
-            });
-            return res.json();
-        },
-        onSuccess: () => {
-            setNotification({ msg: "Status overridden", type: 'success' });
-            queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
-        }
-    });
-
-    const deleteBookingMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await apiFetch(`/bookings/admin/${id}`, { method: "DELETE" });
-            return res.json();
-        },
-        onSuccess: (data) => {
-            setNotification({ msg: data.message || "Booking deleted", type: 'success' });
-            queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
-            queryClient.invalidateQueries({ queryKey: ["adminStats"] });
-        }
-    });
-
-    const handleLogout = () => { localStorage.clear(); router.push("/login"); };
-
-    const getFullUrl = (path: string) => {
-        if (!path) return "";
-        if (path.startsWith("http") || path.startsWith("data:")) return path;
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com";
-        return `${API_URL}/uploads/${path}`;
+    const handleLogout = () => {
+        localStorage.clear();
+        router.push("/login");
     };
 
-    const pendingUsers = users.filter((u: any) =>
-        (u.verificationStatus === 'PENDING' || u.status === 'PENDING') && (u.licenseFrontUrl || u.licenseBackUrl)
-    );
-    const pendingVehicles = cars.filter((c: any) => c.status === 'PENDING' && (c.image || c.images?.length > 0));
-    const pendingCount = pendingUsers.length + pendingVehicles.length;
+    // ── Status Styling ──
+    const getStatusTheme = (status: string) => {
+        const s = status?.toLowerCase();
+        if (s === 'completed') return { bg: 'bg-black', text: 'text-white', dot: 'bg-white' };
+        if (s === 'pending') return { bg: 'bg-[#F5F5F5]', text: 'text-zinc-400', dot: 'bg-zinc-300' };
+        if (s === 'confirmed') return { bg: 'bg-[#526E48]', text: 'text-white', dot: 'bg-white/40' };
+        if (s === 'active_trip') return { bg: 'bg-black text-emerald-400 border border-emerald-500/20', text: 'text-emerald-400', dot: 'bg-emerald-400' };
+        if (s === 'arrived') return { bg: 'bg-orange-500', text: 'text-white', dot: 'bg-white' };
+        return { bg: 'bg-zinc-100', text: 'text-zinc-500', dot: 'bg-zinc-300' };
+    };
 
-    if (statsLoading || usersLoading || carsLoading || bookingsLoading) {
-        return (
-            <div className="min-h-screen bg-white flex items-center justify-center font-sans">
-                <div className="w-12 h-12 border-4 border-[#526E48]/20 border-t-[#526E48] rounded-full animate-spin" />
-            </div>
-        );
-    }
+    const menuItems = [
+        { id: "Overview", icon: LayoutDashboard },
+        { id: "Approvals", icon: ShieldCheck, badge: pendingUsers.length + pendingCars.length },
+        { id: "Bookings", icon: ClipboardList },
+        { id: "Fleet Command", icon: Activity },
+        { id: "Manage Cars", icon: Car },
+        { id: "Users", icon: Users },
+        { id: "Communications", icon: MessageSquare, badge: allChats.length },
+    ];
 
     return (
-        <div className="min-h-screen bg-zinc-50 text-black font-sans flex">
+        <div className="h-screen bg-white text-black flex font-sans overflow-hidden">
 
-            {/* ── Sidebar ── */}
-            <aside className="w-64 bg-white border-r border-black/5 flex flex-col p-8 sticky top-0 h-screen">
-                <div className="flex items-center gap-2 mb-12">
-                    <div className="bg-[#526E48] px-2 py-0.5 rounded text-[10px] text-white font-black italic -skew-x-12">RG</div>
-                    <span className="text-sm font-black tracking-tighter uppercase italic">Rental_<span className="text-[#526E48]">Garage</span></span>
+            {/* ── Sidebar (Tactical White) ── */}
+            <aside className="w-[300px] bg-white border-r border-zinc-100 flex flex-col z-50">
+                <div className="p-10 pb-16">
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/")}>
+                        <div className="bg-[#526E48] px-2 py-0.5 rounded text-[10px] text-white font-black italic -skew-x-12">RG</div>
+                        <span className="text-sm font-black tracking-widest uppercase italic">Rental_<span className="text-[#526E48]">Garage</span></span>
+                    </div>
                 </div>
 
-                <nav className="flex-1 space-y-2">
-                    {["Overview", "Approvals", "Bookings", "Fleet Command", "Mission Logs", "Manage Cars", "Users", "Communications"].map((item) => (
+                <nav className="flex-1 px-8 space-y-1">
+                    {menuItems.map((item) => (
                         <button
-                            key={item}
-                            onClick={() => {
-                                if (item === "Communications") {
-                                    router.push("/dashboard/chat");
-                                } else {
-                                    setActiveTab(item);
-                                }
-                            }}
-                            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === item ? 'bg-[#526E48] text-white shadow-lg shadow-[#526E48]/20' : 'text-zinc-400 hover:bg-zinc-100 hover:text-black'}`}
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl transition-all ${activeTab === item.id
+                                ? "bg-[#526E48] text-white shadow-[0_10px_30px_rgba(82,110,72,0.2)]"
+                                : "text-[#A3A3A3] hover:text-black hover:bg-zinc-50"
+                                }`}
                         >
-                            {item} {(item === 'Approvals' && pendingCount > 0) && (
-                                <span className="ml-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[7px]">{pendingCount}</span>
+                            <div className="flex items-center gap-4">
+                                <item.icon size={16} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">{item.id}</span>
+                            </div>
+                            {item.badge > 0 && (
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black ${activeTab === item.id ? "bg-white text-[#526E48]" : "bg-zinc-100 text-zinc-400"}`}>{item.badge}</span>
                             )}
                         </button>
                     ))}
                 </nav>
 
-                <div className="pt-8 border-t border-black/5 space-y-2">
-                    <Link href="/" className="block w-full text-[9px] font-black uppercase text-center text-[#526E48] py-3 rounded-xl hover:bg-zinc-50 transition-all tracking-widest">Back to Website</Link>
-                    <button onClick={handleLogout} className="w-full text-[9px] font-black uppercase text-red-500 py-3 rounded-xl hover:bg-red-50 transition-all tracking-widest">Logout</button>
+                <div className="p-10 space-y-8">
+                    <button className="text-[9px] font-black uppercase tracking-widest text-[#A3A3A3] hover:text-black transition-all">Registry Insight</button>
+                    <button onClick={handleLogout} className="w-full text-left text-red-500 text-[10px] font-black uppercase tracking-widest hover:pl-2 transition-all">Logout</button>
                 </div>
             </aside>
 
-            {/* ── Main ── */}
-            <main className="flex-1 p-12 overflow-y-auto">
-                <h1 className="text-5xl font-black uppercase italic tracking-tighter mb-16">{activeTab} <span className="text-[#526E48]">Panel.</span></h1>
+            {/* ── Operations Floor ── */}
+            <main className="flex-1 min-w-0 bg-white p-16 overflow-y-auto h-screen custom-scrollbar relative">
+                <header className="mb-16">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#526E48]" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-300 italic">Admin Command Layer</span>
+                    </div>
+                    <h1 className="text-3xl font-black uppercase italic tracking-widest leading-none text-black">
+                        {activeTab} <span className="text-[#526E48]">Control.</span>
+                    </h1>
+                </header>
 
-                {activeTab === "Fleet Command" && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        <div className="flex justify-between items-end mb-10">
-                            <div>
-                                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-black">Active <span className="text-[#526E48]">Ops Theater</span></h2>
-                                <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-[0.2em] mt-1">Units awaiting handover or currently deployed</p>
-                            </div>
-                        </div>
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {/* ── OVERVIEW ── */}
+                        {activeTab === "Overview" && (
+                            <div className="space-y-12">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                                    {[
+                                        { label: "Total Yield", val: `₹${(stats.revenue || 0).toLocaleString()}` },
+                                        { label: "Fleet Status", val: stats.fleet || 0 },
+                                        { label: "Mission Load", val: stats.bookings || 0 },
+                                        { label: "Active Agents", val: stats.users || 0 },
+                                    ].map((s, i) => (
+                                        <div key={i} className="bg-white border border-zinc-100 p-12 rounded-[3.5rem] shadow-sm hover:shadow-xl hover:shadow-zinc-100 transition-all group">
+                                            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-[#D4D4D4] mb-8 italic group-hover:text-[#526E48] transition-colors">{s.label}</p>
+                                            <h4 className="text-4xl font-black italic tracking-tighter leading-none">{s.val}</h4>
+                                        </div>
+                                    ))}
+                                </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {allBookings.filter((b: any) => ['arrived', 'active_trip', 'Trip Started'].includes(b.status)).map((b: any) => (
-                                <div key={b._id} className="bg-white border border-black/5 rounded-[3rem] p-10 shadow-sm relative overflow-hidden group">
-                                    <div className="flex justify-between items-start mb-10">
+                                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                    <div className="xl:col-span-2 bg-white border border-zinc-100 rounded-[3.5rem] p-12">
+                                        <div className="flex items-center justify-between mb-12">
+                                            <h3 className="text-xl font-black uppercase italic tracking-tighter">Yield <span className="text-[#526E48]">Analytics</span></h3>
+                                            <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Real-time Stream</span>
+                                        </div>
+                                        <div className="h-[240px] flex items-end gap-4">
+                                            {[35, 60, 40, 85, 50, 75, 45, 95, 30, 80, 55, 90].map((h, i) => (
+                                                <div key={i} className="flex-1 bg-zinc-50 rounded-2xl relative group overflow-hidden border border-zinc-50 hover:border-[#526E48]/20 transition-all">
+                                                    <motion.div
+                                                        initial={{ height: 0 }}
+                                                        animate={{ height: `${h}%` }}
+                                                        className="absolute bottom-0 left-0 right-0 bg-[#526E48] group-hover:bg-black transition-colors"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white border border-zinc-100 rounded-[3.5rem] p-12 flex flex-col justify-between shadow-sm">
                                         <div>
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase italic ${['arrived', 'Customer Arrived'].includes(b.status) ? 'bg-orange-500 text-white animate-pulse' : 'bg-black text-white'}`}>
-                                                    {b.status}
-                                                </div>
-                                                <span className="text-[9px] font-mono font-bold text-zinc-300">RG-{b._id.slice(-8).toUpperCase()}</span>
+                                            <div className="flex justify-between items-start mb-10">
+                                                <h3 className="text-xl font-black uppercase italic tracking-tighter text-black">Network <span className="text-[#526E48]">Intel.</span></h3>
+                                                <div className="px-3 py-1 bg-[#526E48]/10 rounded-lg text-[8px] font-black text-[#526E48]">PEAK_PERFORMANCE</div>
                                             </div>
-                                            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-black leading-none">{b.carId?.name || "Fleet Asset"}</h3>
-                                            <div className="flex flex-col gap-1 mt-3">
-                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{b.userId?.name} • Mission: {b.tripStatus || "Standby"}</p>
-                                                <div className="flex items-center gap-4 text-[8px] font-mono text-zinc-300">
-                                                    <span>📞 {b.primaryPhone || b.userId?.phone || "NO_PHONE"}</span>
-                                                    <span>📧 {b.userId?.email || "NO_EMAIL"}</span>
+                                            <div className="space-y-8">
+                                                <div className="flex items-end gap-1.5 h-16">
+                                                    {[20, 45, 30, 75, 55, 90, 40, 65].map((h, i) => (
+                                                        <div key={i} className="flex-1 bg-zinc-50 rounded-full relative overflow-hidden h-full">
+                                                            <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} className="absolute bottom-0 left-0 right-0 bg-[#526E48]/40" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="space-y-4">
+                                                    {[
+                                                        { label: 'Uplink Integrity', val: '99.8%' },
+                                                        { label: 'Active Coverage', val: '84%' },
+                                                        { label: 'Data Latency', val: '12ms' }
+                                                    ].map(t => (
+                                                        <div key={t.label} className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-1 h-1 rounded-full bg-[#526E48]" />
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">{t.label}</span>
+                                                            </div>
+                                                            <span className="text-[9px] font-black italic text-black">{t.val}</span>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         </div>
+                                        <button className="w-full h-16 border border-zinc-100 text-black hover:bg-black hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all mt-10">Sync Global Terminal</button>
                                     </div>
+                                </div>
 
-                                    <div className="aspect-video bg-zinc-50 rounded-2xl mb-8 relative overflow-hidden border border-black/[0.04]">
-                                        {(b.carId?.image || b.carId?.images?.[0]) ? (
-                                            <img
-                                                src={getFullUrl(b.carId?.image || b.carId?.images?.[0])}
-                                                className={`w-full h-full object-cover transition-all duration-700 ${['active_trip', 'Trip Started'].includes(b.status) ? 'opacity-20 blur-sm' : 'opacity-100'}`}
-                                                alt="Car Asset"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full bg-zinc-100 flex items-center justify-center">
-                                                <div className="text-zinc-300 text-[10px] font-black uppercase tracking-widest italic">Asset_Image_Not_Found</div>
+                                <div className="mt-10 bg-white border border-zinc-100 rounded-[3.5rem] p-12 shadow-sm">
+                                    <h3 className="text-xl font-black uppercase italic tracking-tighter mb-10">Mission <span className="text-[#526E48]">Records</span></h3>
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="h-14 border-b border-zinc-50">
+                                                <th className="text-[9px] font-black uppercase tracking-widest text-zinc-300 px-4">Unit_ID</th>
+                                                <th className="text-[9px] font-black uppercase tracking-widest text-zinc-300 px-4">Commander</th>
+                                                <th className="text-[9px] font-black uppercase tracking-widest text-zinc-300 text-right px-4">Yield</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {allBookings.filter((b: any) => b.status === "Completed").sort((a: any, b: any) => new Date(b.actualReturnDate || 0).getTime() - new Date(a.actualReturnDate || 0).getTime()).slice(0, 5).map((b: any) => (
+                                                <tr key={b._id} className="h-16 border-b border-zinc-50 last:border-0 hover:bg-zinc-50/50 transition-all">
+                                                    <td className="px-4 text-[10px] font-black uppercase italic tracking-tighter">{b.carId?.name || "Asset"}</td>
+                                                    <td className="px-4 text-[10px] font-black text-zinc-600 italic uppercase">{b.userId?.name || b.fullName}</td>
+                                                    <td className="px-4 text-right">
+                                                        <span className="text-sm font-black italic tracking-tighter text-black">₹{(b.totalPrice + (b.lateFine || 0)).toLocaleString()}</span>
+                                                        {b.lateFine > 0 && <span className="text-[8px] font-black text-red-500 ml-2">(+₹{b.lateFine})</span>}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── APPROVALS ── */}
+                        {activeTab === "Approvals" && (
+                            <div className="space-y-16">
+                                <section>
+                                    <div className="flex items-center gap-4 mb-10">
+                                        <div className="w-1.5 h-10 bg-black italic" />
+                                        <h2 className="text-3xl font-black uppercase italic tracking-tighter">User License <span className="text-[#526E48]">Registry.</span></h2>
+                                    </div>
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                                        {pendingUsers.length > 0 ? pendingUsers.map((u: any) => (
+                                            <div key={u._id} className="bg-white border border-zinc-100 rounded-[3rem] p-12 shadow-sm hover:border-black transition-all">
+                                                <div className="flex justify-between items-start mb-10">
+                                                    <div>
+                                                        <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-1">{u.name}</h3>
+                                                        <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">{u.email}</p>
+                                                    </div>
+                                                    <div className="bg-zinc-50 text-black px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border border-zinc-100">Verification_Req</div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-6 mb-10">
+                                                    {[u.licenseFrontUrl, u.licenseBackUrl].map((img, idx) => (
+                                                        <div key={idx} className="space-y-3">
+                                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-300 italic">{idx === 0 ? 'Front_Spec' : 'Rear_Spec'}</p>
+                                                            <div className="aspect-video bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-50 group pointer-events-auto">
+                                                                <img src={getFullUrl(img)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer" onClick={() => window.open(getFullUrl(img), '_blank')} />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="flex gap-4">
+                                                    <button
+                                                        onClick={async () => {
+                                                            await apiFetch(`/dashboard/admin/verify-user/${u._id}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                                                            queryClient.invalidateQueries({ queryKey: ["pendingUsers"] });
+                                                        }}
+                                                        className="flex-1 h-16 bg-[#526E48] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                                                    >
+                                                        Authorize Agent
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            const reason = prompt("Enter Rejection Reason:");
+                                                            if (reason === null) return;
+                                                            await apiFetch(`/dashboard/admin/verify-user/${u._id}`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", rejectionReason: reason }) });
+                                                            queryClient.invalidateQueries({ queryKey: ["pendingUsers"] });
+                                                        }}
+                                                        className="px-8 h-16 border border-zinc-100 text-red-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-red-50 transition-all font-center flex items-center justify-center font-black"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="col-span-2 py-32 border border-dashed border-zinc-200 rounded-[3.5rem] text-center">
+                                                <p className="text-[12px] font-black uppercase tracking-[0.5em] text-zinc-300 italic">No Pending Agents</p>
                                             </div>
                                         )}
-
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            {['active_trip', 'Trip Started'].includes(b.status) ? (
-                                                <div className="text-center">
-                                                    <div className="w-2 h-2 rounded-full bg-[#526E48] mx-auto mb-3 animate-ping" />
-                                                    <p className="text-[10px] font-black italic text-zinc-900 uppercase tracking-widest">Tracking Live_Position</p>
-                                                </div>
-                                            ) : (
-                                                <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-black italic">Awaiting Deployment</p>
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
+                                </section>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {['arrived', 'Customer Arrived'].includes(b.status) && (
-                                            <button
-                                                onClick={async () => {
-                                                    await apiFetch(`/bookings/${b._id}/handover`, { method: "PATCH" });
-                                                    queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
-                                                }}
-                                                className="col-span-2 h-14 bg-black text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.3em] hover:bg-[#526E48] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl shadow-black/10"
-                                            >
-                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3-3.5 3.5z" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                                Handover Key & Start Trip
-                                            </button>
+                                <section>
+                                    <div className="flex items-center gap-4 mb-10">
+                                        <div className="w-1.5 h-10 bg-[#526E48] italic" />
+                                        <h2 className="text-3xl font-black uppercase italic tracking-tighter">Host RC Book <span className="text-[#526E48]">Registry.</span></h2>
+                                    </div>
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                                        {pendingCars.length > 0 ? pendingCars.map((car: any) => (
+                                            <div key={car._id} className="bg-white border border-zinc-100 rounded-[3rem] p-12 shadow-sm hover:border-[#526E48] transition-all">
+                                                <div className="flex justify-between items-start mb-10">
+                                                    <div>
+                                                        <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-1">{car.name} <span className="text-[#526E48]">[{car.model}]</span></h3>
+                                                        <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">HOST: {car.ownerId?.name || "Independent"}</p>
+                                                    </div>
+                                                    <div className="bg-[#526E48]/10 text-[#526E48] px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border border-[#526E48]/20 italic">Asset_Audit</div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-6 mb-10">
+                                                    {[car.rcFrontUrl, car.rcBackUrl].map((img, idx) => (
+                                                        <div key={idx} className="space-y-3">
+                                                            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-300 italic">{idx === 0 ? 'Document_Front' : 'Document_Rear'}</p>
+                                                            <div className="aspect-video bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-50 text-center flex items-center justify-center group pointer-events-auto">
+                                                                {img ? (
+                                                                    <img src={getFullUrl(img)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-pointer" onClick={() => window.open(getFullUrl(img), '_blank')} />
+                                                                ) : <span className="text-[9px] font-black text-zinc-200 italic">Missing_Fragment</span>}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="flex gap-4">
+                                                    <button
+                                                        onClick={async () => {
+                                                            await apiFetch(`/dashboard/admin/verify-vehicle/${car._id}`, { method: "PATCH", body: JSON.stringify({ status: "APPROVED" }) });
+                                                            queryClient.invalidateQueries({ queryKey: ["pendingCars"] });
+                                                        }}
+                                                        className="flex-1 h-16 bg-[#526E48] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                                                    >
+                                                        Deploy Asset
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            const reason = prompt("Enter Rejection Reason:");
+                                                            if (reason === null) return;
+                                                            await apiFetch(`/dashboard/admin/verify-vehicle/${car._id}`, { method: "PATCH", body: JSON.stringify({ status: "REJECTED", rejectionReason: reason }) });
+                                                            queryClient.invalidateQueries({ queryKey: ["pendingCars"] });
+                                                        }}
+                                                        className="px-8 h-16 border border-zinc-100 text-zinc-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all font-center flex items-center justify-center font-black"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="col-span-2 py-32 bg-zinc-50/50 border border-dashed border-zinc-100 rounded-[3.5rem] text-center">
+                                                <p className="text-[12px] font-black uppercase tracking-[0.5em] text-zinc-200 italic">Fleet Integrity Secured</p>
+                                            </div>
                                         )}
-                                        {(b.status === 'active_trip' || b.status === "Trip Started") && (
-                                            <>
+                                    </div>
+                                </section>
+                            </div>
+                        )}
+
+                        {/* ── BOOKINGS ── */}
+                        {activeTab === "Bookings" && (
+                            <div className="bg-white border border-zinc-100 rounded-[3.5rem] shadow-sm overflow-hidden p-14">
+                                <table className="w-full text-left border-separate border-spacing-y-0">
+                                    <thead>
+                                        <tr className="border-b border-zinc-100 h-20">
+                                            <th className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4D4D4] px-4">Commander</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4D4D4] px-4">Asset</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4D4D4] px-4">Schedule</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4D4D4] text-center px-4">Status</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4D4D4] text-right px-4">Yield</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4D4D4] text-right px-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr className="h-8" />
+                                        {allBookings.map((b: any) => {
+                                            const theme = getStatusTheme(b.status);
+                                            return (
+                                                <tr key={b._id} className="h-16 hover:bg-zinc-50/50 transition-all border-b border-zinc-50 last:border-0 group">
+                                                    <td className="text-[11px] font-black uppercase italic tracking-tighter leading-none px-4">{b.userId?.name || b.fullName}</td>
+                                                    <td className="text-[11px] font-black uppercase italic tracking-tighter text-[#526E48] px-4">{b.carId?.name || "Asset_Unknown"}</td>
+                                                    <td className="px-4">
+                                                        <div className="text-[10px] font-black uppercase tracking-tighter leading-none whitespace-nowrap">
+                                                            {new Date(b.startDate).toLocaleDateString()} <span className="text-zinc-300 font-normal">@</span> {new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            <span className="text-[#526E48] mx-2">→</span>
+                                                            {new Date(b.endDate).toLocaleDateString()} <span className="text-zinc-300 font-normal">@</span> {new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                        <p className="text-[7px] font-bold text-zinc-300 uppercase tracking-widest mt-1">
+                                                            Deploy_Period: {Math.max(1, Math.ceil((new Date(b.endDate).getTime() - new Date(b.startDate).getTime()) / (1000 * 3600 * 24)))} Days
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center">
+                                                        <StatusSelector
+                                                            currentStatus={b.status}
+                                                            onUpdate={async (newStatus) => {
+                                                                await apiFetch(`/bookings/${b._id}/status`, { method: "PATCH", body: JSON.stringify({ status: newStatus }) });
+                                                                queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
+                                                            }}
+                                                        />
+                                                    </td>
+                                                    <td className="text-right font-black italic text-sm tracking-tighter px-4">
+                                                        ₹{((b.totalPrice || 0) + (b.lateFine || 0) + calculateLiveFine(b)).toLocaleString()}
+                                                        {b.lateFine > 0 && <span className="text-[8px] text-red-500 block">+₹{b.lateFine.toLocaleString()} Penalty</span>}
+                                                        {calculateLiveFine(b) > 0 && <span className="text-[8px] text-[#526E48] block animate-pulse">+₹{calculateLiveFine(b).toLocaleString()} Live_Accrual</span>}
+                                                    </td>
+                                                    <td className="text-right px-4">
+                                                        <div className="flex items-center justify-end gap-3">
+                                                            {b.status === 'active_trip' && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            const amount = prompt("💰 Enter Manual Fine Amount (₹):");
+                                                                            if (!amount || isNaN(Number(amount))) return;
+                                                                            try {
+                                                                                const res = await apiFetch(`/bookings/${b._id}/fine`, {
+                                                                                    method: "POST",
+                                                                                    body: JSON.stringify({ amount: Number(amount) })
+                                                                                });
+                                                                                const data = await res.json();
+                                                                                alert(data.message);
+                                                                                queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
+                                                                            } catch (err) { alert("Fine Processing Error"); }
+                                                                        }}
+                                                                        className="px-3 py-1 bg-amber-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                                                                    >
+                                                                        ⚠️ Fine
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            const confirmed = confirm(`🏁 FINALIZE MISSION: End trip for ${b.carId?.name}? (Late fines will be assessed automatically)`);
+                                                                            if (!confirmed) return;
+                                                                            try {
+                                                                                const res = await apiFetch(`/bookings/${b._id}/trip-status`, {
+                                                                                    method: "PATCH",
+                                                                                    body: JSON.stringify({ tripStatus: "Completed" })
+                                                                                });
+                                                                                const data = await res.json();
+                                                                                alert(data.message);
+                                                                                queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
+                                                                            } catch (err) { alert("Termination Error"); }
+                                                                        }}
+                                                                        className="px-3 py-1 bg-red-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                                                                    >
+                                                                        Complete Trip
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                            <button onClick={() => router.push(`/admin/intercept/${b._id}`)} className="text-[8px] font-black uppercase tracking-widest text-[#D4D4D4] hover:text-black transition-all underline decoration-1 underline-offset-4">Track Live</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* ── FLEET COMMAND ── */}
+                        {activeTab === "Fleet Command" && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                {allBookings.filter((b: any) => ['arrived', 'active_trip'].includes(b.status)).map((b: any) => (
+                                    <div key={b._id} className="bg-white border border-zinc-100 rounded-[4rem] p-12 transition-all hover:border-black group shadow-sm">
+                                        <div className="flex justify-between items-start mb-10">
+                                            <div>
+                                                <div className="flex items-center gap-4 mb-3">
+                                                    <span className={`px-5 py-1.5 rounded-xl text-[9px] font-black uppercase italic tracking-widest ${b.status === 'arrived' ? 'bg-orange-500 text-white animate-pulse' : 'bg-[#526E48] text-white'}`}>
+                                                        {b.status === 'arrived' ? "UNIT_STATIONARY" : "OPS_ACTIVE"}
+                                                    </span>
+                                                    <span className="text-[10px] font-mono font-bold text-zinc-300 tracking-[0.2em]">INTEL-{b._id.slice(-6).toUpperCase()}</span>
+                                                </div>
+                                                <h3 className="text-4xl font-black uppercase italic tracking-tighter leading-none text-black">{b.carId?.name}</h3>
+                                            </div>
+                                        </div>
+                                        <div className="h-48 bg-zinc-50 rounded-[2rem] mb-6 overflow-hidden border border-zinc-100">
+                                            <img src={getFullUrl(b.carId?.image)} className={`w-full h-full object-cover grayscale transition-all duration-[2s] hover:grayscale-0 ${b.status === 'active_trip' ? 'scale-105' : 'opacity-100'}`} alt="Asset" />
+                                        </div>
+
+                                        {/* 📅 Tactical Schedule Sync */}
+                                        <div className="flex items-center justify-between bg-zinc-50/50 rounded-2xl p-4 mb-3 border border-zinc-100">
+                                            <div className="flex flex-col">
+                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest mb-1">Deployment_Start</span>
+                                                <span className="text-[10px] font-black uppercase tracking-tighter text-black">
+                                                    {new Date(b.startDate).toLocaleDateString()} <span className="text-zinc-300 font-normal">@</span> {new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                            <div className="w-[1px] h-6 bg-zinc-200" />
+                                            <div className="flex flex-col text-right">
+                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest mb-1">Scheduled_Return</span>
+                                                <span className="text-[10px] font-black uppercase tracking-tighter text-red-500">
+                                                    {new Date(b.endDate).toLocaleDateString()} <span className="text-zinc-300 font-normal">@</span> {new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between px-2 mb-8">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Projected_Yield</span>
+                                            <div className="text-right">
+                                                <span className="text-xl font-black italic">₹{((b.totalPrice || 0) + (b.lateFine || 0) + calculateLiveFine(b)).toLocaleString()}</span>
+                                                {calculateLiveFine(b) > 0 && <span className="text-[8px] text-[#526E48] block font-black border-t border-[#526E48]/20 mt-1 pt-1 animate-pulse">+₹{calculateLiveFine(b).toLocaleString()} OVERDUE_ACCRUAL</span>}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {b.status === 'arrived' && (
                                                 <button
-                                                    onClick={() => window.open(`/admin/intercept/${b._id}`, '_blank')}
-                                                    className="h-14 bg-zinc-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-[#526E48] transition-all shadow-xl shadow-black/10"
-                                                >
-                                                    Track Live Intercept
-                                                </button>
-                                                <button
-                                                    onClick={async () => {
-                                                        await apiFetch(`/bookings/${b._id}/trip-status`, {
-                                                            method: "PATCH",
-                                                            headers: { "Content-Type": "application/json" },
-                                                            body: JSON.stringify({ tripStatus: "Completed" })
-                                                        });
+                                                    onClick={async (e) => {
+                                                        const btn = e.currentTarget;
+                                                        btn.disabled = true;
+                                                        btn.innerHTML = 'ESTABLISHING SYNC...';
+                                                        await apiFetch(`/bookings/${b._id}/handover`, { method: "PATCH" });
                                                         queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
                                                     }}
-                                                    className="h-14 border-2 border-red-100 text-red-500 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all transition-all"
+                                                    className="h-20 bg-[#526E48] text-white rounded-3xl flex items-center justify-center gap-4 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-black transition-all"
                                                 >
-                                                    Complete mission
+                                                    <Power size={20} className="text-white" />
+                                                    Handover Control
                                                 </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-
-                {activeTab === "Overview" && (
-                    <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">
-
-                        <div className="bg-white p-10 rounded-[3rem] border border-black/5 shadow-2xl overflow-hidden relative group">
-                            <div className="flex justify-between items-center mb-10 relative z-10">
-                                <div>
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 mb-2">Revenue Velocity // 180D History</h4>
-                                    <h3 className="text-3xl font-black italic tracking-tighter">₹{stats.revenue?.toLocaleString()} <span className="text-[10px] font-bold text-[#526E48] tracking-widest ml-4">+12.5% TRAJECTORY</span></h3>
-                                </div>
-                            </div>
-                            <div className="h-64 w-full relative">
-                                <svg className="w-full h-full" viewBox="0 0 1000 200" preserveAspectRatio="none">
-                                    <defs>
-                                        <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#526E48" stopOpacity="0.2" />
-                                            <stop offset="100%" stopColor="#526E48" stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    {[0, 50, 100, 150].map(y => <line key={y} x1="0" y1={y} x2="1000" y2={y} stroke="black" strokeOpacity="0.03" strokeWidth="1" />)}
-                                    {stats.history && (
-                                        <>
-                                            <path d={`M 0 200 ${stats.history.map((h: any, i: number) => `L ${(i * 200)} ${200 - (h.revenue / (Math.max(...stats.history.map((x: any) => x.revenue)) || 1) * 150)}`).join(' ')} L 1000 200 Z`} fill="url(#lineGrad)" />
-                                            <path d={`M 0 ${200 - (stats.history[0]?.revenue / (Math.max(...stats.history.map((x: any) => x.revenue)) || 1) * 150)} ${stats.history.map((h: any, i: number) => `L ${(i * 200)} ${200 - (h.revenue / (Math.max(...stats.history.map((x: any) => x.revenue)) || 1) * 150)}`).join(' ')}`} fill="none" stroke="#526E48" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                                            {stats.history.map((h: any, i: number) => (
-                                                <g key={i}>
-                                                    <circle cx={i * 200} cy={200 - (h.revenue / (Math.max(...stats.history.map((x: any) => x.revenue)) || 1) * 150)} r="4" fill="white" stroke="#526E48" strokeWidth="2" />
-                                                    <text x={i * 200} y="195" textAnchor="middle" className="text-[8px] font-black fill-zinc-300 uppercase italic">{h.month}</text>
-                                                </g>
-                                            ))}
-                                        </>
-                                    )}
-                                </svg>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="bg-white p-8 rounded-[2.5rem] border border-black/5 shadow-sm group">
-                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-4">Commanders</p>
-                                <h3 className="text-3xl font-black italic">{stats.hosts || 0}</h3>
-                            </div>
-                            <div className="bg-white p-8 rounded-[2.5rem] border border-black/5 shadow-sm group">
-                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-4">Elite Fleet</p>
-                                <h3 className="text-3xl font-black italic">{stats.fleet || 0}</h3>
-                            </div>
-                            <div className="bg-white p-8 rounded-[2.5rem] border border-black/5 shadow-sm group">
-                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-4">Platform Yield</p>
-                                <h3 className="text-3xl font-black italic">₹{stats.avgYield?.toLocaleString()}</h3>
-                            </div>
-                            <div className={`p-8 rounded-[2.5rem] border transition-all ${stats.totalPending > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-black/5'}`}>
-                                <p className="text-[9px] font-black uppercase tracking-widest mb-4">Action Pipeline</p>
-                                <h3 className="text-4xl font-black italic">{stats.totalPending || 0}</h3>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === "Approvals" && (
-                    <div className="space-y-16">
-                        <section>
-                            <h2 className="text-xl font-black uppercase italic mb-8 border-b pb-4">Document(Rent) <span className="text-[#526E48] ml-2">({pendingUsers.length})</span></h2>
-                            {pendingUsers.length === 0 ? <p className="text-zinc-300 italic text-[10px] uppercase font-bold tracking-widest text-center py-20">No pending rental documents.</p> : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {pendingUsers.map(u => (
-                                        <div key={u._id} className="bg-white p-8 rounded-[3rem] border border-black/5 shadow-sm space-y-6">
-                                            <div>
-                                                <p className="text-xs font-black uppercase italic text-[#526E48]">{u.name}</p>
-                                                <p className="text-[9px] font-bold text-zinc-400">{u.email}</p>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {['licenseFrontUrl', 'licenseBackUrl'].map((field, idx) => (
-                                                    <div key={field} className="space-y-1">
-                                                        <p className="text-[7px] font-bold uppercase tracking-widest text-zinc-400">{idx === 0 ? "Front" : "Back"}</p>
-                                                        <div className="aspect-video bg-zinc-50 rounded-lg overflow-hidden border border-black/5">
-                                                            {u[field] ? <img src={getFullUrl(u[field])} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center opacity-10">N/A</div>}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-4">
-                                                <button onClick={() => verifyUserMutation.mutate({ id: u._id, status: 'APPROVED' })} className="flex-1 bg-black text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-[#526E48] transition-all disabled:opacity-50" disabled={verifyUserMutation.isPending}>Authorize</button>
-                                                <button onClick={() => verifyUserMutation.mutate({ id: u._id, status: 'REJECTED', reason: prompt("Reason for denial?") })} className="flex-1 border border-black/10 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-red-500 disabled:opacity-50" disabled={verifyUserMutation.isPending}>Deny</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </section>
-
-                        <section>
-                            <h2 className="text-xl font-black uppercase italic mb-8 border-b pb-4">Document(Host) <span className="text-[#526E48] ml-2">({pendingVehicles.length})</span></h2>
-                            {pendingVehicles.length === 0 ? <p className="text-zinc-300 italic text-[10px] uppercase font-bold tracking-widest text-center py-20">No assets awaiting documentation.</p> : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {pendingVehicles.map(v => (
-                                        <div key={v._id} className="bg-white p-8 rounded-[3rem] border border-black/5 shadow-sm space-y-6">
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="text-xs font-black uppercase italic text-[#526E48]">{v.name}</p>
-                                                    <p className="text-[9px] font-bold text-zinc-400">Host: {v.ownerId?.name}</p>
-                                                </div>
-                                                <Image src={getFullUrl(v.image || v.images?.[0])} width={48} height={48} className="rounded-xl object-cover" alt="Car" />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {['rcFrontUrl', 'rcBackUrl'].map((field, idx) => (
-                                                    <div key={field} className="space-y-1">
-                                                        <p className="text-[7px] font-bold uppercase tracking-widest text-zinc-400">RC {idx === 0 ? "Front" : "Back"}</p>
-                                                        <div className="aspect-video bg-zinc-50 rounded-lg overflow-hidden border border-black/5">
-                                                            {v[field] ? <img src={getFullUrl(v[field])} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center opacity-10">N/A</div>}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex gap-4">
-                                                <button onClick={() => verifyVehicleMutation.mutate({ id: v._id, status: 'APPROVED' })} className="flex-1 bg-[#526E48] text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-[#526E48]/20 disabled:opacity-50" disabled={verifyVehicleMutation.isPending}>Commission</button>
-                                                <button onClick={() => verifyVehicleMutation.mutate({ id: v._id, status: 'REJECTED', reason: prompt("Reason?") })} className="flex-1 border border-black/10 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-red-500 disabled:opacity-50" disabled={verifyVehicleMutation.isPending}>Reject</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </section>
-                    </div>
-                )}
-
-                {activeTab === "Bookings" && (
-                    <div className="bg-white border border-black/5 rounded-[2.5rem] overflow-hidden shadow-sm">
-                        <table className="w-full text-left">
-                            <thead className="bg-zinc-50 border-b border-black/5">
-                                <tr>
-                                    {["Commander", "Asset", "Status", "Yield", "Actions"].map(h => <th key={h} className="px-8 py-5 text-[9px] font-black uppercase tracking-widest text-zinc-400">{h}</th>)}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-black/5">
-                                {allBookings.map(b => (
-                                    <tr key={b._id} className="hover:bg-zinc-50 transition-all group">
-                                        <td className="px-8 py-6 text-[11px] font-black uppercase italic">{b.fullName || b.userId?.name || "Guest"}</td>
-                                        <td className="px-8 py-6 text-[10px] font-black uppercase text-[#526E48] italic">{b.carId?.name || "Fleet Asset"}</td>
-                                        <td className="px-8 py-6">
-                                            <div className="relative">
+                                            )}
+                                            <div className="flex flex-col gap-3">
                                                 <button
-                                                    onClick={() => setOpenStatusId(openStatusId === b._id ? null : b._id)}
-                                                    className={`w-44 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-between px-4 transition-all shadow-lg active:scale-95 ${b.status === 'active_trip' ? 'bg-[#526E48] text-white shadow-[#526E48]/20 animate-pulse' :
-                                                        b.status === 'arrived' ? 'bg-amber-400 text-amber-950 shadow-amber-400/20' :
-                                                            b.status === 'upcoming_pickup' ? 'bg-orange-500 text-white shadow-orange-500/20' :
-                                                                b.status === 'Confirmed' ? 'bg-blue-600 text-white shadow-blue-600/20' :
-                                                                    b.status === 'Pending' ? 'bg-zinc-400 text-white shadow-zinc-400/20' :
-                                                                        b.status === 'Completed' ? 'bg-zinc-900 text-white shadow-zinc-900/20' :
-                                                                            'bg-red-500 text-white shadow-red-500/20'
-                                                        }`}
+                                                    onClick={() => window.open(`/admin/intercept/${b._id}`, '_blank')}
+                                                    className="h-20 bg-black text-white rounded-3xl flex items-center justify-center gap-4 text-[11px] font-black uppercase tracking-[0.4em] hover:bg-[#526E48] transition-all shadow-xl"
                                                 >
-                                                    <span className="flex items-center gap-2">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${['Pending', 'arrived'].includes(b.status) ? 'bg-white animate-pulse' : 'bg-white/50'}`} />
-                                                        {b.status}
-                                                    </span>
-                                                    <svg className={`w-2.5 h-2.5 transition-transform ${openStatusId === b._id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M19 9l-7 7-7-7" /></svg>
+                                                    <Activity size={20} />
+                                                    Intercept Tactical Link
                                                 </button>
-
-                                                <AnimatePresence>
-                                                    {openStatusId === b._id && (
-                                                        <>
-                                                            <div className="fixed inset-0 z-[60]" onClick={() => setOpenStatusId(null)} />
-                                                            <motion.div
-                                                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                                className="absolute left-0 mt-2 w-56 bg-white border border-black/5 shadow-2xl rounded-2xl p-2 z-[70] backdrop-blur-xl"
-                                                            >
-                                                                {["Pending", "Confirmed", "upcoming_pickup", "arrived", "active_trip", "Completed", "Cancelled"].map(s => (
-                                                                    <button
-                                                                        key={s}
-                                                                        onClick={() => {
-                                                                            updateBookingStatusMutation.mutate({ id: b._id, status: s });
-                                                                            setOpenStatusId(null);
-                                                                        }}
-                                                                        className="w-full text-left px-4 py-3 rounded-xl hover:bg-zinc-50 transition-all flex items-center justify-between group"
-                                                                    >
-                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 group-hover:text-black">
-                                                                            {s.replace("_", " ")}
-                                                                        </span>
-                                                                        {b.status === s && <div className="w-1.5 h-1.5 rounded-full bg-[#526E48]" />}
-                                                                    </button>
-                                                                ))}
-                                                            </motion.div>
-                                                        </>
-                                                    )}
-                                                </AnimatePresence>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <button
+                                                        onClick={async () => {
+                                                            const amount = prompt("💰 Enter Manual Fine Amount (₹):");
+                                                            if (!amount || isNaN(Number(amount))) return;
+                                                            try {
+                                                                const res = await apiFetch(`/bookings/${b._id}/fine`, {
+                                                                    method: "POST",
+                                                                    body: JSON.stringify({ amount: Number(amount) })
+                                                                });
+                                                                const data = await res.json();
+                                                                alert(data.message);
+                                                                queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
+                                                            } catch (err) { alert("Fine Processing Error"); }
+                                                        }}
+                                                        className="h-14 bg-amber-600/10 border border-amber-500/20 text-amber-600 rounded-2xl flex items-center justify-center text-[9px] font-black uppercase tracking-[0.4em] hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                                                    >
+                                                        ⚠️ Fine
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            const confirmed = confirm("⚠️ CRITICAL TERMINATE: End this deployment and assess fines?");
+                                                            if (!confirmed) return;
+                                                            try {
+                                                                const res = await apiFetch(`/bookings/${b._id}/trip-status`, {
+                                                                    method: "PATCH",
+                                                                    body: JSON.stringify({ tripStatus: "Completed" })
+                                                                });
+                                                                const data = await res.json();
+                                                                alert(data.message);
+                                                                queryClient.invalidateQueries({ queryKey: ["adminBookings"] });
+                                                            } catch (err) { alert("Termination Error"); }
+                                                        }}
+                                                        className="h-14 bg-red-600/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center justify-center text-[9px] font-black uppercase tracking-[0.4em] hover:bg-red-600 hover:text-white transition-all"
+                                                    >
+                                                        Terminate
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </td>
-                                        <td className="px-8 py-6 text-[11px] font-black italic">₹{b.totalPrice?.toLocaleString()}</td>
-                                        <td className="px-8 py-6 text-right">
-                                            <button onClick={() => deleteBookingMutation.mutate(b._id)} className="opacity-0 group-hover:opacity-100 text-[8px] font-black uppercase text-red-400 hover:text-red-600 tracking-widest transition-all">Delete</button>
-                                        </td>
-                                    </tr>
+                                        </div>
+                                    </div>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {activeTab === "Manage Cars" && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        {cars.map((c: any) => (
-                            <Link href={`/dashboard/admin/edit-car/${c._id}`} key={c._id} className="bg-white p-6 rounded-[2.5rem] border border-black/5 space-y-4 group hover:shadow-xl transition-all cursor-pointer block">
-                                <div className="h-40 rounded-3xl overflow-hidden relative">
-                                    <img src={getFullUrl(c.image || c.images?.[0])} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Car" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase italic text-[#526E48]">{c.name}</p>
-                                    <div className="flex justify-between items-center mt-4">
-                                        <p className="text-[7px] font-bold text-zinc-300 uppercase tracking-widest">{c.status}</p>
-                                        <button onClick={(e) => { e.preventDefault(); deleteCarMutation.mutate(c._id); }} className="text-[8px] font-black uppercase text-red-300 hover:text-red-600 transition-all p-2 -my-2 relative z-10">Delete</button>
+                                {allBookings.filter((b: any) => ['arrived', 'active_trip'].includes(b.status)).length === 0 && (
+                                    <div className="col-span-2 py-40 border border-dashed border-zinc-100 rounded-[4rem] text-center">
+                                        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-zinc-300 italic">No Active Missions in Progress</p>
                                     </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-
-                {activeTab === "Users" && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {users.filter((u: any) => u.role !== 'admin').map((u: any) => (
-                            <div key={u._id} className={`${u.isBlocked ? 'bg-red-50' : 'bg-white'} p-8 rounded-[3rem] border border-black/5 flex flex-col gap-6 hover:shadow-xl transition-all relative overflow-hidden`}>
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black ${u.isBlocked ? 'bg-red-100 text-red-700' : 'bg-zinc-100 text-[#526E48]'}`}>{u.name?.charAt(0)}</div>
-                                    <div>
-                                        <p className="text-[12px] font-black uppercase italic leading-none mb-1">{u.name}</p>
-                                        <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{u.role}</p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => toggleBlockMutation.mutate(u._id)} className={`flex-[2] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${u.isBlocked ? 'bg-green-600 text-white' : 'bg-zinc-900 text-white'}`}>
-                                        {u.isBlocked ? "Unblock" : `Block ${u.role?.toLowerCase() === 'customer' ? 'Host' : 'User'}`}
-                                    </button>
-                                    <button onClick={() => deleteUserMutation.mutate(u._id)} className="flex-1 py-3 rounded-xl border border-red-100 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">Delete</button>
-                                </div>
+                                )}
                             </div>
-                        ))}
-                    </div>
-                )}
+                        )}
 
-                {activeTab === "Mission Logs" && (
-                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-10">
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-black">Mission <span className="text-[#526E48]">Archives</span></h2>
-                                <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-[0.2em] mt-1">Strategic logs of all completed platform deployments</p>
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="bg-white border border-black/5 px-8 py-6 rounded-[2rem] shadow-sm text-right">
-                                    <p className="text-[9px] font-black text-zinc-300 uppercase tracking-[0.3em] mb-1">Total_Archives_Yield</p>
-                                    <p className="text-2xl font-black italic text-black">
-                                        ₹{allBookings.filter(b => b.status?.toLowerCase() === 'completed').reduce((sum, b) => sum + (b.totalPrice || 0), 0).toLocaleString()}
-                                    </p>
-                                </div>
-                                <div className="bg-[#526E48] px-8 py-6 rounded-[2rem] shadow-xl shadow-[#526E48]/20 text-right text-white">
-                                    <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] mb-1">Admin_Fleet_Earnings</p>
-                                    <p className="text-2xl font-black italic">
-                                        ₹{allBookings.filter(b => b.status?.toLowerCase() === 'completed' && b.carId?.isAdminFleet).reduce((sum, b) => sum + (b.totalPrice || 0), 0).toLocaleString()}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-[3rem] border border-black/5 overflow-hidden shadow-sm">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-black/5">
-                                        <th className="px-8 py-6 text-left text-[9px] font-black uppercase tracking-widest text-[#526E48]">Agent/Unit</th>
-                                        <th className="px-8 py-6 text-left text-[9px] font-black uppercase tracking-widest text-zinc-400">Ownership</th>
-                                        <th className="px-8 py-6 text-left text-[9px] font-black uppercase tracking-widest text-zinc-400">Mission Date</th>
-                                        <th className="px-8 py-6 text-left text-[9px] font-black uppercase tracking-widest text-zinc-400">Revenue Yield</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {allBookings.filter(b => b.status?.toLowerCase() === 'completed').map((b: any) => (
-                                        <tr key={b._id} className="border-b border-black/5 last:border-0 hover:bg-zinc-50 transition-all group">
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-black/5 overflow-hidden shrink-0 flex items-center justify-center">
-                                                        {(b.carId?.image || b.carId?.images?.[0]) ? (
-                                                            <img src={getFullUrl(b.carId?.image || b.carId?.images?.[0])} className="w-full h-full object-cover" alt="" />
-                                                        ) : (
-                                                            <div className="text-[8px] font-black text-zinc-300">N/A</div>
-                                                        )}
+                        {/* ── MANAGE CARS ── */}
+                        {activeTab === "Manage Cars" && (
+                            <div className="bg-white border border-zinc-100 rounded-[3.5rem] p-14 shadow-sm">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-b border-zinc-50 h-20">
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-300 px-6">Asset Registry</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-300 px-6 text-center">Authorization</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-300 text-right px-6">Yield/Day</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-300 text-right px-6">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {allCars.map((car: any) => (
+                                            <tr key={car._id} className="h-32 hover:bg-zinc-50 border-b border-zinc-50 last:border-0 group transition-all">
+                                                <td className="px-6">
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="w-24 h-16 bg-zinc-50 rounded-2xl overflow-hidden border border-zinc-100">
+                                                            <img src={getFullUrl(car.image)} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="Car" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-lg font-black uppercase italic tracking-tighter leading-none mb-1">{car.name}</p>
+                                                            <p className="text-[9px] font-bold text-zinc-300 uppercase italic">{car.model} // TRUCK_OPS</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[11px] font-black uppercase italic leading-none truncate max-w-[120px]">{b.carId?.name || "Asset"}</p>
-                                                        <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mt-1">{b.userId?.name}</p>
+                                                </td>
+                                                <td className="text-center px-6">
+                                                    <span className={`px-8 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border ${car.status === 'APPROVED' ? 'bg-[#526E48] text-white border-[#526E48]' : 'bg-red-50 text-red-500 border-red-100'}`}>
+                                                        {car.status}
+                                                    </span>
+                                                </td>
+                                                <td className="text-right font-black italic text-2xl tracking-tighter px-6">₹{car.pricePerDay?.toLocaleString()}</td>
+                                                <td className="text-right px-6">
+                                                    <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button
+                                                            onClick={() => router.push(`/dashboard/admin/edit-car/${car._id}`)}
+                                                            className="px-4 py-2 bg-white border border-zinc-200 text-zinc-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:border-black hover:text-black transition-all shadow-sm"
+                                                        >
+                                                            EDIT
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                const confirmed = confirm(`PERMANENT DELETE: Remove ${car.name} from global registry?`);
+                                                                if (!confirmed) return;
+                                                                await apiFetch(`/cars/${car._id}`, { method: "DELETE" });
+                                                                queryClient.invalidateQueries({ queryKey: ["adminCars"] });
+                                                            }}
+                                                            className="px-4 py-2 bg-white border border-red-100 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            DELETE
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* ── USERS ── */}
+                        {activeTab === "Users" && (
+                            <div className="bg-white border border-zinc-100 rounded-[3.5rem] p-14 shadow-sm">
+                                <table className="w-full text-left border-separate border-spacing-y-4">
+                                    <thead>
+                                        <tr className="text-zinc-300">
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] px-8 py-4">Agent Name</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] px-8 py-4">Credential Link</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] px-8 py-4 text-center">Security Status</th>
+                                            <th className="text-[10px] font-black uppercase tracking-[0.4em] px-8 py-4 text-right">Overrides</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {users.map((user: any) => (
+                                            <tr key={user._id} className="h-24 bg-white hover:bg-zinc-50 border border-zinc-100 rounded-3xl transition-all group shadow-sm">
+                                                <td className="text-[13px] font-black uppercase tracking-widest text-zinc-900 px-8 rounded-l-3xl">{user.name}</td>
+                                                <td className="text-[11px] font-mono text-zinc-400 px-8 uppercase">{user.email}</td>
+                                                <td className="text-center px-8">
+                                                    <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full border ${user.isBlocked ? 'bg-red-50 text-red-500 border-red-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${user.isBlocked ? 'bg-red-500 animate-pulse' : 'bg-green-600'}`} />
+                                                        <span className="text-[9px] font-black uppercase tracking-widest italic">{user.isBlocked ? 'REVOKED' : 'AUTHORIZED'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="text-right px-8 rounded-r-3xl">
+                                                    <div className="flex items-center justify-end gap-3 transition-all">
+                                                        <button
+                                                            onClick={async () => {
+                                                                const confirmed = confirm(`Confirm status change for ${user.name}?`);
+                                                                if (!confirmed) return;
+                                                                await apiFetch(`/dashboard/admin/users/${user._id}/block`, { method: "PATCH" });
+                                                                queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+                                                            }}
+                                                            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${user.isBlocked ? 'bg-yellow-400 text-black border-yellow-400 shadow-lg shadow-yellow-400/20 hover:bg-yellow-500' : 'bg-white text-zinc-500 border-zinc-200 hover:border-zinc-800 hover:text-zinc-900 shadow-sm'}`}
+                                                        >
+                                                            {user.isBlocked ? 'UNBLOCK' : 'BLOCK'}
+                                                        </button>
+                                                        <button
+                                                            onClick={async () => {
+                                                                const confirmed = confirm(`TERMINATION: Wipe agent ${user.name} from records?`);
+                                                                if (!confirmed) return;
+                                                                await apiFetch(`/dashboard/admin/users/${user._id}`, { method: "DELETE" });
+                                                                queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+                                                            }}
+                                                            className="px-4 py-2 bg-white border border-red-100 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            DELETE
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* ── COMMUNICATIONS ── */}
+                        {activeTab === "Communications" && (
+                            <div className="space-y-6">
+                                {allChats?.length > 0 ? (
+                                    allChats.map((chat: any) => (
+                                        <div
+                                            key={chat._id}
+                                            onClick={() => router.push(`/dashboard/chat?id=${chat._id}`)}
+                                            className="group bg-white border border-zinc-100 hover:border-black transition-all p-12 rounded-[4rem] flex items-center justify-between cursor-pointer shadow-sm hover:shadow-2xl"
+                                        >
+                                            <div className="flex items-center gap-10">
+                                                <div className="flex -space-x-8">
+                                                    <div className="w-20 h-20 rounded-[2rem] border-4 border-white overflow-hidden bg-zinc-100 z-10 shadow-lg">
+                                                        <img src={getFullUrl(chat.renterId?.image)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 grayscale group-hover:grayscale-0" alt="Renter" />
+                                                    </div>
+                                                    <div className="w-20 h-20 rounded-[2rem] border-4 border-white overflow-hidden bg-[#526E48] flex items-center justify-center text-lg font-black italic text-white z-0 shadow-lg">
+                                                        {chat.hostId?.name?.charAt(0) || "H"}
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td className="px-8 py-6">
-                                                <span className={`px-2 py-1 rounded text-[7px] font-black uppercase ${b.carId?.isAdminFleet ? 'bg-[#526E48]/10 text-[#526E48]' : 'bg-zinc-100 text-zinc-500'}`}>
-                                                    {b.carId?.isAdminFleet ? 'Admin_Fleet' : 'Host_Partner'}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-6 text-[10px] font-mono text-zinc-400">
-                                                {new Date(b.startDate).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-8 py-6 text-[11px] font-black italic">₹{b.totalPrice?.toLocaleString()}</td>
-                                        </tr>
-                                    ))}
-                                    {allBookings.filter(b => b.status?.toLowerCase() === 'completed').length === 0 && (
-                                        <tr>
-                                            <td colSpan={4} className="py-20 text-center text-zinc-300 italic text-[10px] uppercase font-bold tracking-widest">No completed missions in the archives.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                                <div>
+                                                    <h4 className="text-[13px] font-black uppercase tracking-[0.2em] text-black leading-none mb-3">
+                                                        {chat.renterId?.name || "ANON"} <span className="text-[#526E48] font-light mx-2">/</span> {chat.hostId?.name || "HOST"}
+                                                    </h4>
+                                                    <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest italic leading-none">
+                                                        INTEL: {chat.lastMessage || "Thread Initialized"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[10px] font-black text-[#526E48] uppercase tracking-[0.4em] mb-4">
+                                                    {new Date(chat.lastMessageAt || chat.createdAt).toLocaleDateString()}
+                                                </p>
+                                                <div className="inline-flex items-center gap-4 bg-zinc-50 px-8 py-3 rounded-2xl group-hover:bg-black group-hover:text-emerald-400 transition-all transform group-hover:-translate-x-2">
+                                                    <MessageSquare size={16} />
+                                                    <span className="text-[9px] font-black uppercase tracking-[0.5em]">Audit Flow</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="py-20 text-center border-2 border-dashed border-zinc-100 rounded-[4rem]">
+                                        <p className="text-[12px] font-black uppercase tracking-[0.5em] text-zinc-200 italic">No Platforms Intelligence Gathered</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </motion.div>
-                )}
+                </AnimatePresence>
             </main>
 
-            {/* 🔱 Global Notifications */}
-            <AnimatePresence>
-                {notification && (
-                    <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-12 right-12 z-[100]">
-                        <div className={`px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-4 ${notification.type === 'success' ? 'bg-zinc-900 text-white' : 'bg-white text-red-600 border border-red-50'}`}>
-                            <div className="w-2 h-2 rounded-full bg-[#526E48] animate-pulse" />
-                            <span className="text-[9px] font-black uppercase tracking-widest italic">{notification.msg}</span>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <style jsx global>{`
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+                ::-webkit-scrollbar { width: 4px; }
+                ::-webkit-scrollbar-track { background: transparent; }
+                ::-webkit-scrollbar-thumb { background: #526E48; border-radius: 10px; }
+                body { background: white !important; font-family: 'Inter', sans-serif !important; }
+            `}</style>
         </div>
     );
 }

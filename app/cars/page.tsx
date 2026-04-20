@@ -187,17 +187,18 @@ function CarListingContent() {
                                         </svg>
                                     </button>
                                     {showLogout && (
-                                        <div className="absolute right-0 top-full mt-2 z-50">
-                                            <button
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="absolute right-0 top-full mt-2 z-[200] w-32"
+                                        >
+                                            <button 
                                                 onClick={handleLogout}
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-red-500/40 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] text-red-500 hover:bg-red-500 hover:text-white transition-all whitespace-nowrap shadow-2xl"
+                                                className="w-full flex items-center justify-center py-2 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors"
                                             >
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                                </svg>
                                                 Logout
                                             </button>
-                                        </div>
+                                        </motion.div>
                                     )}
                                 </div>
                             </div>
@@ -239,21 +240,21 @@ function CarListingContent() {
 
                         {/* Pick-up */}
                         <div className="w-full lg:w-52 h-14 bg-white rounded-2xl border border-black/5 px-2 flex items-center">
-                            <LuxuryDatePicker 
-                                label="DEPLOYMENT" 
-                                value={startDate} 
-                                onChange={setStartDate} 
+                            <LuxuryDatePicker
+                                label="DEPLOYMENT"
+                                value={startDate}
+                                onChange={setStartDate}
                                 placeholder="Pick-up Date"
                             />
                         </div>
 
                         {/* Drop-off */}
                         <div className="w-full lg:w-52 h-14 bg-white rounded-2xl border border-black/5 px-2 flex items-center">
-                            <LuxuryDatePicker 
-                                label="RETRACTION" 
-                                value={endDate} 
-                                onChange={setEndDate} 
-                                placeholder="Drop-off Date" 
+                            <LuxuryDatePicker
+                                label="RETRACTION"
+                                value={endDate}
+                                onChange={setEndDate}
+                                placeholder="Drop-off Date"
                                 minDate={startDate}
                             />
                         </div>
@@ -306,6 +307,27 @@ function CarListingContent() {
                                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#526E48] border-t-transparent" />
                                 <p className="text-[10px] font-black tracking-[0.4em] text-[#526E48] animate-pulse uppercase">Syncing Fleet...</p>
                             </div>
+                        ) : cars.length === 0 ? (
+                            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="relative py-32 px-10 text-center rounded-[3.5rem] bg-zinc-50 border border-black/[0.05] shadow-2xl overflow-hidden">
+                                <div className="relative z-10">
+                                    <div className="flex justify-center mb-10">
+                                        <div className="relative w-20 h-20 bg-white border border-black/5 rounded-full flex items-center justify-center shadow-sm">
+                                            <svg className="w-10 h-10 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 max-w-xl mx-auto">
+                                        <h3 className="text-2xl lg:text-3xl font-black uppercase italic tracking-tighter text-black">
+                                            Sector <span className="text-[#526E48]">Temporarily Unavailable</span>
+                                        </h3>
+                                        <p className="text-[10px] md:text-xs font-bold uppercase tracking-[0.3em] text-zinc-400 leading-relaxed max-w-sm mx-auto">
+                                            The selected vehicle category is currently undergoing fleet maintenance or the assets are fully deployed.
+                                        </p>
+                                    </div>
+                                </div>
+                            </motion.div>
                         ) : (
                             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
                                 {cars.map((car: Car, idx: number) => (

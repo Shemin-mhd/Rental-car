@@ -57,6 +57,13 @@ function RegisterContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, password, role }),
             });
+
+            // 🛡️ Pre-parse check for JSON protocol
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error(`Uplink Protocol Mismatch: Expected JSON but received ${contentType || "HTML"}. Verify the backend is operational.`);
+            }
+
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Uplink denied: Protocol registration failed.");
             // If there's a redirect, carry it over to login
@@ -219,6 +226,7 @@ function RegisterContent() {
                         <motion.div variants={itemVariants} className="space-y-2">
                             <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Name</label>
                             <input
+                                suppressHydrationWarning
                                 type="text"
                                 required
                                 value={name}
@@ -232,6 +240,7 @@ function RegisterContent() {
                         <motion.div variants={itemVariants} className="space-y-2">
                             <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Email</label>
                             <input
+                                suppressHydrationWarning
                                 type="email"
                                 required
                                 value={email}
@@ -245,6 +254,7 @@ function RegisterContent() {
                         <motion.div variants={itemVariants} className="space-y-2 relative">
                             <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Password</label>
                             <input
+                                suppressHydrationWarning
                                 type="password"
                                 required
                                 value={password}
@@ -258,6 +268,7 @@ function RegisterContent() {
                         <motion.div variants={itemVariants} className="space-y-2">
                             <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Confirm_Password</label>
                             <input
+                                suppressHydrationWarning
                                 type="password"
                                 required
                                 value={confirmPassword}
@@ -271,6 +282,7 @@ function RegisterContent() {
                         <motion.div variants={itemVariants} className="space-y-2">
                             <label className="block text-[8px] uppercase font-black tracking-[0.4em] text-black ml-1 italic">Vocation_Protocol</label>
                             <select
+                                suppressHydrationWarning
                                 required
                                 value={role}
                                 onChange={(e) => setRole(e.target.value)}
@@ -289,6 +301,7 @@ function RegisterContent() {
                                 whileTap={{ scale: 0.98 }}
                                 type="submit"
                                 disabled={loading}
+                                suppressHydrationWarning
                                 className="w-full mt-6 bg-black text-white hover:bg-[#526E48] font-black rounded-2xl px-6 py-5 text-[10px] uppercase tracking-[0.4em] flex items-center justify-center gap-4 transition-all disabled:opacity-50 cursor-pointer shadow-2xl shadow-black/10"
                             >
                                 {loading ? (
@@ -321,10 +334,11 @@ function RegisterContent() {
                                 setError("Vocation protocol required for Google synchronization.");
                                 return;
                             }
-                            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-car-backend-7np6.onrender.com/api";
+                            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
                             const callbackUrl = redirect ? `&redirect=${encodeURIComponent(redirect)}` : "";
                             window.location.href = `${API_BASE}/auth/google?role=${role}${callbackUrl}`;
                         }}
+                        suppressHydrationWarning
                         className="w-full mb-8 bg-zinc-50 border border-black/[0.03] hover:border-[#526E48]/30 hover:bg-white text-zinc-500 hover:text-black font-black rounded-2xl px-6 py-4 text-[9px] uppercase tracking-[0.3em] flex items-center justify-center gap-4 transition-all italic shadow-sm"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -352,3 +366,4 @@ function RegisterContent() {
         </div>
     );
 }
+  

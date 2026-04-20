@@ -400,15 +400,10 @@ export default function HostDashboard() {
 
                                         <button
                                             onClick={() => {
-                                                if (car.lat && car.lng) {
-                                                    window.open(`https://www.google.com/maps/search/?api=1&query=${car.lat},${car.lng}`, "_blank");
-                                                } else if (car.location) {
-                                                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(car.location)}`, "_blank");
-                                                } else {
-                                                    alert("📍 Signal Lost: Base station location missing.");
-                                                }
+                                                // Unconditionally launch the Customer Live Radar
+                                                router.push(`/dashboard/customer/intercept/${car._id}`);
                                             }}
-                                            className="w-full h-12 bg-zinc-50 border border-black/[0.03] rounded-xl flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] text-black hover:bg-[#526E48] hover:text-white transition-all group/btn"
+                                            className={`w-full h-12 flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all group/btn rounded-xl border ${car.isMoving || hostBookings?.find((b: any) => b.carId._id === car._id && b.status !== 'Completed' && b.status !== 'Cancelled') ? 'bg-[#526E48] text-white border-[#526E48] shadow-lg shadow-[#526E48]/20 hover:bg-black' : 'bg-zinc-50 border-black/[0.03] text-black hover:bg-[#526E48] hover:text-white'}`}
                                         >
                                             <Navigation size={14} className="group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
                                             {(!car.lat || !car.lng) ? "View Base Station" : "View Live Position"}
@@ -426,8 +421,8 @@ export default function HostDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDFDFD] text-black font-sans flex overflow-hidden">
-            {/* ── Sidebar ── */}
+        <div className="min-h-screen bg-[#FDFDFD] text-black font-sans flex flex-col lg:flex-row overflow-hidden relative">
+            {/* ── Sidebar (Desktop) ── */}
             <aside className="hidden lg:flex w-72 bg-white border-r border-black/[0.04] flex-col p-10 z-50">
                 <div className="flex items-center gap-4 mb-20 group cursor-pointer" onClick={() => router.push("/")}>
                     <div className="w-10 h-10 bg-[#526E48] rounded-2xl flex items-center justify-center shadow-2xl transition-all group-hover:rotate-12">
@@ -473,24 +468,50 @@ export default function HostDashboard() {
                 </div>
             </aside>
 
+            {/* ── Mobile Tactical Command Bar ── */}
+            <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] bg-black/90 backdrop-blur-2xl rounded-[2rem] border border-white/10 px-6 py-4 flex justify-between items-center shadow-2xl">
+                {[
+                    { id: "dashboard", icon: LayoutDashboard },
+                    { id: "registry", icon: Menu },
+                    { id: "chat", icon: MessageSquare },
+                    { id: "tracking", icon: MapIcon },
+                    { id: "add", icon: Plus, special: true },
+                ].map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => {
+                            if (item.id === "add") router.push("/dashboard/customer/add-car");
+                            else if (item.id === "chat") router.push("/dashboard/chat");
+                            else setActiveTab(item.id);
+                        }}
+                        className={`p-3 rounded-2xl transition-all ${item.special ? "bg-[#526E48] text-white scale-110 -translate-y-2 shadow-lg shadow-[#526E48]/40" : activeTab === item.id ? "text-[#526E48]" : "text-white/40"}`}
+                    >
+                        <item.icon size={20} fontWeight="900" />
+                    </button>
+                ))}
+            </div>
+
             {/* ── Main Operations Floor ── */}
-            <main className="flex-1 h-screen overflow-y-auto bg-[#FDFDFD] custom-scrollbar flex flex-col p-10 pt-14">
+            <main className="flex-1 h-screen overflow-y-auto bg-[#FDFDFD] custom-scrollbar flex flex-col p-6 lg:p-10 lg:pt-14 pb-32 lg:pb-10">
                 <div className="max-w-6xl mx-auto w-full">
-                    <header className="flex justify-between items-center mb-16">
-                        <div>
-                            <h2 className="text-5xl font-black italic tracking-tighter text-black leading-none uppercase">
-                                Welcome, <span className="text-[#526E48]">{user?.name?.split(' ')[0] || "User"}</span>
+                    <header className="flex justify-between items-center mb-10 lg:mb-16">
+                        <div className="max-w-[70%]">
+                            <h2 className="text-3xl lg:text-5xl font-black italic tracking-tighter text-black leading-none uppercase truncate">
+                                Hello, <span className="text-[#526E48]">{user?.name?.split(' ')[0] || "User"}</span>
                             </h2>
-                            <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-[0.6em] mt-3 italic">Car Management Dashboard</p>
+                            <p className="text-[8px] lg:text-[10px] font-bold text-zinc-300 uppercase tracking-[0.4em] mt-3 italic">Car Management Hub</p>
                         </div>
-                        <div className="flex items-center gap-6">
-                            <button onClick={() => queryClient.invalidateQueries()} className="w-14 h-14 rounded-2xl bg-white border border-black/5 flex items-center justify-center shadow-sm hover:shadow-xl hover:border-[#526E48]/20 transition-all text-zinc-300 hover:text-[#526E48]">
+                        <div className="flex items-center gap-3 lg:gap-6">
+                            <button onClick={handleLogout} className="lg:hidden w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center shadow-sm text-red-500">
+                                <LogOut size={18} />
+                            </button>
+                            <button onClick={() => queryClient.invalidateQueries()} className="hidden lg:flex w-14 h-14 rounded-2xl bg-white border border-black/5 items-center justify-center shadow-sm hover:shadow-xl hover:border-[#526E48]/20 transition-all text-zinc-300 hover:text-[#526E48]">
                                 <RefreshCw size={20} />
                             </button>
                             <div className="relative cursor-pointer">
-                                <div className="w-14 h-14 rounded-2xl bg-white border border-black/5 flex items-center justify-center shadow-sm hover:shadow-xl transition-all">
-                                    <Bell size={20} className="text-black" />
-                                    <div className="absolute top-0 right-0 w-3 h-3 bg-[#526E48] rounded-full border-4 border-[#FDFDFD]" />
+                                <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-white border border-black/5 flex items-center justify-center shadow-sm hover:shadow-xl transition-all">
+                                    <Bell size={18} className="text-black" />
+                                    <div className="absolute top-0 right-0 w-2.5 h-2.5 lg:w-3 lg:h-3 bg-[#526E48] rounded-full border-4 border-[#FDFDFD]" />
                                 </div>
                             </div>
                         </div>

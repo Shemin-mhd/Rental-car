@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { apiFetch, getImageUrl } from "@/services/api";
 import { io } from "socket.io-client";
@@ -221,11 +220,10 @@ export default function BookingStatusPage() {
                                                 {/* Car Image & Details */}
                                                 <div className="shrink-0 lg:w-[320px]">
                                                     <div className="relative h-48 lg:h-44 w-full rounded-3xl overflow-hidden border border-black/[0.03] bg-zinc-50">
-                                                        <Image
+                                                        <img
                                                             src={getImageUrl(bk.carId?.image)}
                                                             alt={bk.carId?.name || 'Vehicle'}
-                                                            fill
-                                                            className="object-cover"
+                                                            className="w-full h-full object-cover"
                                                         />
                                                         <div className="absolute top-3 left-3 bg-white/80 backdrop-blur-md px-3 py-1 rounded-lg border border-black/5">
                                                             <span className="text-[8px] font-black uppercase tracking-widest text-[#526E48] italic">{bk.carId?.category || 'Premium'}</span>
@@ -281,9 +279,17 @@ export default function BookingStatusPage() {
                                                             <p className="text-[7px] font-black uppercase tracking-[0.3em] text-zinc-300">Vector_Address</p>
                                                             <p className="text-[10px] font-bold text-zinc-600 uppercase leading-snug">{bk.address || 'N/A'}</p>
                                                         </div>
-                                                        <div className="space-y-1.5">
-                                                            <p className="text-[7px] font-black uppercase tracking-[0.3em] text-zinc-300">Net_Investment</p>
-                                                            <p className="text-[18px] font-black text-[#526E48] italic leading-none">₹{bk.totalPrice?.toLocaleString()}</p>
+                                                        <div className="space-y-1.5 pt-4 border-t border-black/[0.03] lg:border-0 lg:pt-0">
+                                                            <p className="text-[7px] font-black uppercase tracking-[0.3em] text-[#ef4444]">Net_Investment</p>
+                                                            <div className="flex flex-col">
+                                                                <p className="text-[18px] font-black text-black italic leading-none">₹{((bk.totalPrice || 0) + (bk.lateFine || 0)).toLocaleString()}</p>
+                                                                {bk.lateFine > 0 && (
+                                                                    <p className="text-[8px] font-black text-[#ef4444] uppercase tracking-widest mt-1.5 flex items-center gap-1">
+                                                                        <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />
+                                                                        Includes ₹{bk.lateFine.toLocaleString()} in Mission Penalties
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>

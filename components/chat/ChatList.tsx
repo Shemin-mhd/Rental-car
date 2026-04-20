@@ -18,7 +18,8 @@ export default function ChatList() {
 
       <div className="flex-1 overflow-y-auto">
         {chats.map((chat) => {
-          const otherParticipant = String(chat.renterId?._id) === String(currentUser?.id) ? chat.hostId : chat.renterId;
+          const isUserRenter = String(chat.renterId?._id) === String(currentUser?.id);
+          const otherParticipant = isUserRenter ? chat.hostId : chat.renterId;
           const isSelected = activeChat?._id === chat._id;
           const isOnline = onlineUsers.has(otherParticipant?._id);
           const isAdmin = currentUser?.role === "admin";
@@ -40,8 +41,18 @@ export default function ChatList() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline mb-0.5">
-                  <h4 className="text-[13px] font-black italic uppercase text-black truncate">
-                    {isAdmin ? `${chat.renterId?.name} ↔ ${chat.hostId?.name}` : otherParticipant?.name}
+                  <h4 className="text-[13px] font-black italic uppercase text-black truncate flex items-center gap-2">
+                    {isAdmin ? `${chat.renterId?.name} ↔ ${chat.hostId?.name}` : (
+                      <>
+                        {otherParticipant?.name}
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-black tracking-tighter not-italic ${isUserRenter ? 'bg-orange-500/10 text-orange-600' : 'bg-[#14532d]/10 text-[#14532d]'}`}>
+                          {isUserRenter ? 'HOST' : 'CUSTOMER'}
+                        </span>
+                        {chat.carId?.isAdminFleet && (
+                          <span className="text-[7px] bg-black text-white px-1.5 py-0.5 rounded-sm font-black tracking-widest italic">ADMIN FLEET</span>
+                        )}
+                      </>
+                    )}
                   </h4>
                   {chat.lastMessageAt && (
                     <span className="text-[8px] font-bold text-zinc-400 uppercase italic whitespace-nowrap">
@@ -49,8 +60,11 @@ export default function ChatList() {
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] font-bold text-zinc-400 truncate tracking-tight uppercase italic">
-                  {chat.lastMessage || "Establishing secure connection..."}
+                <p className="text-[10px] font-bold text-zinc-400 truncate tracking-tight uppercase italic flex items-center gap-2">
+                  {chat.carId && (
+                    <span className="text-[#14532d] shrink-0 font-black tracking-tighter">[{chat.carId.name}]</span>
+                  )}
+                  <span className="truncate">{chat.lastMessage || "Establishing secure connection..."}</span>
                 </p>
               </div>
 

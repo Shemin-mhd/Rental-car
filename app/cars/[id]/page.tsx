@@ -7,6 +7,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { apiFetch, getImageUrl } from "@/services/api";
 import LuxuryDatePicker from "@/components/ui/DatePicker";
+import dynamic from "next/dynamic";
+import "leaflet/dist/leaflet.css";
+
+const MapContainer = dynamic(() => import("react-leaflet").then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import("react-leaflet").then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import("react-leaflet").then(mod => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import("react-leaflet").then(mod => mod.Popup), { ssr: false });
+const Circle = dynamic(() => import("react-leaflet").then(mod => mod.Circle), { ssr: false });
 
 interface Car {
     _id: string;
@@ -25,6 +33,9 @@ interface Car {
     description?: string;
     isAvailable: boolean;
     availableFrom?: string;
+    lat?: number;
+    lng?: number;
+    ownerId?: any;
 }
 
 const LUXURY_PLACEHOLDERS = [
@@ -46,12 +57,45 @@ export default function CarDetailsPage() {
     );
 }
 
+// ── Kerala City Coordinates Lookup ──────────────────────────────────────────
+const KERALA_CITY_COORDS: Record<string, [number, number]> = {
+    "MALAPPURAM": [11.0730, 76.0740],
+    "KOZHIKODE": [11.2588, 75.7804],
+    "CALICUT": [11.2588, 75.7804],
+    "THRISSUR": [10.5276, 76.2144],
+    "PALAKKAD": [10.7867, 76.6548],
+    "KANNUR": [11.8745, 75.3704],
+    "KASARAGOD": [12.4996, 74.9869],
+    "KOTTAYAM": [9.5916, 76.5222],
+    "ALAPPUZHA": [9.4981, 76.3388],
+    "ALLEPPEY": [9.4981, 76.3388],
+    "KOLLAM": [8.8932, 76.6141],
+    "TRIVANDRUM": [8.5241, 76.9366],
+    "THIRUVANANTHAPURAM": [8.5241, 76.9366],
+    "IDUKKI": [9.9189, 76.9726],
+    "ERNAKULAM": [10.0081, 76.3217],
+    "WAYANAD": [11.6854, 76.1320],
+    "PATHANAMTHITTA": [9.2648, 76.7870],
+    "KOCHI": [10.0081, 76.3217],
+};
+
+function resolveCityCoords(location: string): [number, number] | null {
+    const key = location.toUpperCase().trim();
+    if (KERALA_CITY_COORDS[key]) return KERALA_CITY_COORDS[key];
+    for (const city of Object.keys(KERALA_CITY_COORDS)) {
+        if (key.includes(city)) return KERALA_CITY_COORDS[city];
+    }
+    return null;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function CarDetailsContent() {
     const params = useParams();
     const id = params?.id as string;
     const searchParams = useSearchParams();
     const router = useRouter();
     const [car, setCar] = useState<Car | null>(null);
+    const [resolvedCoords, setResolvedCoords] = useState<[number, number] | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState<string>("");
     const [username, setUsername] = useState("");
@@ -112,6 +156,61 @@ function CarDetailsContent() {
                 const res = await apiFetch(`/cars/${id}`);
                 if (!res.ok) throw new Error("Car not found");
                 const data = await res.json();
+
+                // 📡 Smart Location Sync
+                // Priority: 1) Hardcoded Kerala city table (from location name)
+                //           2) DB coords if they differ meaningfully from Kochi default
+                //           3) Nominatim geocoding
+                //           4) Default Kochi fallback
+                const KOCHI_LAT = 10.0081;
+                const KOCHI_LNG = 76.3217;
+
+                // 1️⃣ Always try hardcoded table first — fast, reliable, no network
+                if (data.location) {
+                    const hardcoded = resolveCityCoords(data.location);
+                    if (hardcoded) {
+                        console.log(`✅ [MAP] "${data.location}" → hardcoded [${hardcoded}]`);
+                        setResolvedCoords(hardcoded);
+                        setCar(data);
+                        if (data.image) setActiveImage(getImageUrl(data.image));
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                // 2️⃣ Use DB coords if they are NOT the default Kochi placeholder
+                const distFromKochi = Math.abs((data.lat ?? KOCHI_LAT) - KOCHI_LAT) + Math.abs((data.lng ?? KOCHI_LNG) - KOCHI_LNG);
+                if (distFromKochi > 0.01) {
+                    console.log(`✅ [MAP] Using DB coords: [${data.lat}, ${data.lng}]`);
+                    setResolvedCoords([data.lat, data.lng]);
+                    setCar(data);
+                    if (data.image) setActiveImage(getImageUrl(data.image));
+                    setLoading(false);
+                    return;
+                }
+
+                // 3️⃣ Nominatim as last resort for unknown city names
+                if (data.location) {
+                    try {
+                        const geoRes = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(data.location + ', Kerala, India')}&limit=1`,
+                            { headers: { 'Accept-Language': 'en' } }
+                        );
+                        const geoData = await geoRes.json();
+                        if (geoData && geoData.length > 0) {
+                            const coords: [number, number] = [parseFloat(geoData[0].lat), parseFloat(geoData[0].lon)];
+                            console.log(`✅ [MAP] "${data.location}" → Nominatim [${coords}]`);
+                            setResolvedCoords(coords);
+                            setCar(data);
+                            if (data.image) setActiveImage(getImageUrl(data.image));
+                            setLoading(false);
+                            return;
+                        }
+                    } catch (e) { console.warn("[MAP] Nominatim failed:", e); }
+                }
+
+                // 4️⃣ Absolute fallback
+                setResolvedCoords([KOCHI_LAT, KOCHI_LNG]);
                 setCar(data);
                 if (data.image) setActiveImage(getImageUrl(data.image));
             } catch (err: any) {
@@ -136,6 +235,41 @@ function CarDetailsContent() {
         fetchSimilar();
     }, [car]);
 
+    const [chatLoading, setChatLoading] = useState(false);
+    const handleContactHost = async () => {
+        if (!isLoggedIn) { router.push("/login"); return; }
+        setChatLoading(true);
+        try {
+            const res = await apiFetch("/chat/create", {
+                method: "POST",
+                body: JSON.stringify({ carId: id }),
+            });
+            const data = await res.json();
+            if (res.ok) router.push(`/dashboard/chat?id=${data._id}`);
+            else alert(data.message || "Failed to open chat.");
+        } catch {
+            alert("Network error. Please try again.");
+        } finally {
+            setChatLoading(false);
+        }
+    };
+
+    const [L, setL] = useState<any>(null);
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            // @ts-ignore
+            import("leaflet").then((leaflet) => { setL(leaflet.default); });
+        }
+    }, []);
+
+    const carIcon = L ? new L.Icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20],
+        className: 'unit-marker-filter'
+    }) : null;
+
     const handleLogout = () => {
         localStorage.clear();
         window.location.replace("/login");
@@ -159,6 +293,7 @@ function CarDetailsContent() {
 
     return (
         <div className="relative min-h-screen bg-white text-black selection:bg-[#526E48]/30 overflow-x-hidden font-sans antialiased text-[10px]">
+            <style dangerouslySetInnerHTML={{ __html: mapStyles }} />
             {/* Navbar */}
             <nav className="fixed top-0 inset-x-0 z-50 bg-white/60 backdrop-blur-xl border-b border-black/[0.04] px-8 h-14 flex items-center justify-between">
                 <Link href="/cars" className="p-2 border border-black/10 rounded-full hover:bg-[#526E48] hover:text-white transition-all text-[#526E48]">
@@ -176,9 +311,25 @@ function CarDetailsContent() {
                             <span className="text-[7px] font-bold text-zinc-500 tracking-[0.2em] leading-none mb-1">Signed In</span>
                             <span className="text-[10px] uppercase font-black tracking-widest text-[#526E48] leading-none truncate max-w-[120px]">{username}</span>
                         </div>
-                        <button onClick={() => setShowLogout(!showLogout)} className="w-8 h-8 rounded-full border border-red-500/20 bg-red-500/5 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
-                            <svg className="w-3.5 h-3.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                        </button>
+                        <div className="relative">
+                            <button onClick={() => setShowLogout(!showLogout)} className="w-8 h-8 rounded-full border border-red-500/20 bg-red-500/5 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-lg">
+                                <svg className="w-3.5 h-3.5 text-red-500 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                            </button>
+                            {showLogout && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="absolute right-0 top-full mt-2 z-[200] w-32"
+                                >
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center justify-center py-2 bg-red-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-colors"
+                                    >
+                                        Logout
+                                    </button>
+                                </motion.div>
+                            )}
+                        </div>
                     </div>
                 )}
             </nav>
@@ -241,6 +392,50 @@ function CarDetailsContent() {
                                     {car.description || `The ${car.name} is maintained to showroom perfection.`}
                                 </p>
                             </div>
+
+                            {/* 🗺️ Location Map */}
+                            <div className="space-y-4 pt-4 border-t border-black/[0.03]">
+                                <h2 className="text-sm font-black uppercase italic tracking-tighter flex items-center gap-3 text-black">
+                                    <div className="w-8 h-0.5 bg-[#526E48]" /> Regional Deployment
+                                </h2>
+                                <div className="h-[300px] w-full rounded-[2rem] overflow-hidden border border-black/5 bg-zinc-50 relative">
+                                    {typeof window !== 'undefined' && MapContainer && (
+                                        <MapContainer
+                                            center={resolvedCoords || [10.0081, 76.3217]}
+                                            zoom={15}
+                                            style={{ height: '100%', width: '100%' }}
+                                            zoomControl={false}
+                                            maxBounds={[[8.17, 74.85], [12.87, 77.52]]}
+                                            minZoom={7}
+                                        >
+                                            <TileLayer
+                                                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                                            />
+                                            {carIcon && (
+                                                <>
+                                                    <Circle
+                                                        center={resolvedCoords || [10.0081, 76.3217]}
+                                                        radius={1000}
+                                                        pathOptions={{ fillColor: '#526E48', fillOpacity: 0.1, color: '#526E48', weight: 1 }}
+                                                    />
+                                                    <Marker position={resolvedCoords || [10.0081, 76.3217]} icon={carIcon}>
+                                                        <Popup>
+                                                            <div className="p-2 text-[10px] font-black uppercase italic">
+                                                                {car.name} Deployment Zone
+                                                            </div>
+                                                        </Popup>
+                                                    </Marker>
+                                                </>
+                                            )}
+                                        </MapContainer>
+                                    )}
+                                    <div className="absolute bottom-4 left-4 z-[1000] bg-white/80 backdrop-blur-md px-4 py-2 rounded-xl border border-black/5 shadow-sm">
+                                        <p className="text-[8px] font-black uppercase tracking-widest text-[#526E48] mb-0.5">Assigned Sector</p>
+                                        <p className="text-[10px] font-black uppercase italic text-black">{car.location}, KERALA</p>
+                                    </div>
+                                </div>
+                            </div>
                         </section>
                     </div>
 
@@ -282,11 +477,11 @@ function CarDetailsContent() {
                                     <div className="space-y-2.5">
                                         <div className="flex justify-between items-start text-[10px] font-bold text-zinc-500 tracking-widest uppercase">
                                             <span>Pickup</span>
-                                            <span className="text-black text-right">{car.location}<br/>{pickupDate ? new Date(pickupDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 'TBD'} - 10:00 AM</span>
+                                            <span className="text-black text-right">{car.location}<br />{pickupDate ? new Date(pickupDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD'} - 10:00 AM</span>
                                         </div>
                                         <div className="flex justify-between items-start text-[10px] font-bold text-zinc-500 tracking-widest uppercase mt-2">
                                             <span>Return</span>
-                                            <span className="text-black text-right">{dropDate ? new Date(dropDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : (plan !== "custom" ? new Date(new Date().setDate(new Date().getDate() + days - 1)).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) : 'TBD')} - 6:00 PM</span>
+                                            <span className="text-black text-right">{dropDate ? new Date(dropDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : (plan !== "custom" ? new Date(new Date().setDate(new Date().getDate() + days - 1)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD')} - 6:00 PM</span>
                                         </div>
                                     </div>
                                     <div className="h-px bg-black/[0.03] my-4" />
@@ -307,24 +502,26 @@ function CarDetailsContent() {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => {
-                                        if (!car.isAvailable) return;
-                                        if (!isLoggedIn) { router.push("/register"); return; }
-                                        let finalPickup = pickupDate || new Date().toISOString().split("T")[0];
-                                        let finalDrop = dropDate || new Date().toISOString().split("T")[0];
-                                        if (plan !== "custom") {
-                                            const dObj = new Date(); dObj.setDate(dObj.getDate() + days - 1);
-                                            finalDrop = dObj.toISOString().split("T")[0];
-                                        }
-                                        const params = new URLSearchParams({ start: finalPickup, end: finalDrop, plan });
-                                        router.push(`/bookings/confirm/${car._id}?${params.toString()}`);
-                                    }}
-                                    disabled={!car.isAvailable || (plan === "custom" && (!pickupDate || !dropDate))}
-                                    className={`w-full py-4.5 rounded-2xl text-[10px] font-black uppercase italic tracking-[0.2em] transition-all ${!car.isAvailable ? "bg-red-500/10 text-red-500" : "bg-[#526E48] text-white shadow-lg"}`}
-                                >
-                                    {!car.isAvailable ? "Booked — Elite Hold" : `Instant Reservation — ₹${grandTotal.toLocaleString()}`}
-                                </button>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => {
+                                            if (!car.isAvailable) return;
+                                            if (!isLoggedIn) { router.push("/register"); return; }
+                                            let finalPickup = pickupDate || new Date().toISOString().split("T")[0];
+                                            let finalDrop = dropDate || new Date().toISOString().split("T")[0];
+                                            if (plan !== "custom") {
+                                                const dObj = new Date(); dObj.setDate(dObj.getDate() + days - 1);
+                                                finalDrop = dObj.toISOString().split("T")[0];
+                                            }
+                                            const params = new URLSearchParams({ start: finalPickup, end: finalDrop, plan });
+                                            router.push(`/bookings/confirm/${car._id}?${params.toString()}`);
+                                        }}
+                                        disabled={!car.isAvailable || (plan === "custom" && (!pickupDate || !dropDate))}
+                                        className={`w-full py-5 rounded-2xl text-[11px] font-black uppercase italic tracking-[0.2em] transition-all ${!car.isAvailable ? "bg-red-500/10 text-red-500" : "bg-[#526E48] text-white shadow-lg rotate-hover hover:scale-[1.02]"}`}
+                                    >
+                                        {!car.isAvailable ? "Booked — Elite Hold" : "Instant Reservation"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -333,3 +530,13 @@ function CarDetailsContent() {
         </div>
     );
 }
+
+const mapStyles = `
+    .unit-marker-filter {
+        filter: invert(1) hue-rotate(90deg) drop-shadow(0 0 10px rgba(82, 110, 72, 0.5));
+    }
+    .leaflet-container {
+        background: #f8f9fa !important;
+        cursor: crosshair !important;
+    }
+`;

@@ -92,7 +92,7 @@ export const ChatSocketProvider = ({ children }: { children: ReactNode }) => {
         }
         if (!user?.id) return;
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-garage.duckdns.org";
         socket = io(API_URL, { transports: ["websocket"] });
 
         socket.on("connect", () => {

@@ -34,7 +34,7 @@ function LoginContent() {
 
     const handleGoogleLogin = () => {
         // Redirect to backend Google auth endpoint with redirect URL
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-car-backend-7np6.onrender.com/api";
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-garage.duckdns.org/api";
         const callbackUrl = redirect ? `?redirect=${encodeURIComponent(redirect)}` : "";
         window.location.href = `${API_BASE}/auth/google${callbackUrl}`;
     };
@@ -44,7 +44,7 @@ function LoginContent() {
         setLoading(true);
         setError("");
         try {
-            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-car-backend-7np6.onrender.com/api";
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-garage.duckdns.org/api";
             const res = await fetch(`${API_BASE}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -91,7 +91,7 @@ function LoginContent() {
         setError("");
         setForgotMessage("");
         try {
-            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-car-backend-7np6.onrender.com/api";
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-garage.duckdns.org/api";
             const res = await fetch(`${API_BASE}/auth/forgot-password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

@@ -37,7 +37,7 @@ export default function Home() {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/cars`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://rental-garage.duckdns.org/api'}/cars`);
         const data = await res.json();
         const priorityModels = ["Mini Cooper", "Bmw", "Swift"];
         const selected = data.filter((c: any) => 

@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 const getImageUrl = (img?: string) => {
     if (!img || img === "" || img === "null") return "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=2000";
     if (img.startsWith("http")) return img;
-    return `https://rental-car-backend-7np6.onrender.com/uploads/${img}`;
+    return `https://rental-garage.duckdns.org/uploads/${img}`;
 };
 
 export default function BookingHistoryPage() {

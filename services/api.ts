@@ -2,7 +2,7 @@
  * api.ts - A Fetch-based API utility with automatic token refreshing
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://rental-garage.duckdns.org/api";
 
 interface FetchOptions extends RequestInit {
   headers?: Record<string, string>;
@@ -137,7 +137,7 @@ export function getImageUrl(path: string | undefined | null): string {
   }
 
   // Derive Base URL from API_URL by removing /api suffix (handles trailing slash too)
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://rental-garage.duckdns.org/api";
   const BASE_URL = API_URL.replace(/\/api\/?$/, "");
 
   // If path already starts with uploads/, don't prepend it again

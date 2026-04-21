@@ -15,7 +15,7 @@ export default function BookingStatusPage() {
 
     // 🛰️ Real-time Socket Connection
     useEffect(() => {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-garage.duckdns.org";
         const newSocket = io(API_URL, { transports: ["websocket"] });
 
         newSocket.on("bookingStatusUpdate", (data: any) => {

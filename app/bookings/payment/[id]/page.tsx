@@ -15,7 +15,7 @@ const LUXURY_PLACEHOLDERS = [
 const getImageUrl = (img?: string) => {
     if (!img || img === "" || img === "null") return LUXURY_PLACEHOLDERS[0];
     if (img.startsWith("http")) return img;
-    return `https://rental-car-backend-7np6.onrender.com/uploads/${img}`;
+    return `https://rental-garage.duckdns.org/uploads/${img}`;
 };
 
 interface Car {
@@ -93,7 +93,7 @@ function PaymentContent({ id }: { id: string }) {
         fetchBooking();
         
         // 🛰️ Real-time Sync-Bridge connection
-        const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://rental-car-backend-7np6.onrender.com";
+        const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://rental-garage.duckdns.org";
         const socket = io(BASE_URL);
         
         socket.emit("join", id);

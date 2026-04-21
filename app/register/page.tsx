@@ -51,7 +51,7 @@ function RegisterContent() {
         setLoading(true);
         setError("");
         try {
-            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-car-backend-7np6.onrender.com/api";
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-garage.duckdns.org/api";
             const res = await fetch(`${API_BASE}/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -334,7 +334,7 @@ function RegisterContent() {
                                 setError("Vocation protocol required for Google synchronization.");
                                 return;
                             }
-                            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+                            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://rental-garage.duckdns.org/api";
                             const callbackUrl = redirect ? `&redirect=${encodeURIComponent(redirect)}` : "";
                             window.location.href = `${API_BASE}/auth/google?role=${role}${callbackUrl}`;
                         }}

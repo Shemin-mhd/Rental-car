@@ -114,7 +114,7 @@ export default function CustomerInterceptPage({ params }: { params: Promise<{ id
             return;
         }
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-garage.duckdns.org";
         const socket = io(API_URL, { transports: ["websocket"] });
 
         socket.on("connect", () => {

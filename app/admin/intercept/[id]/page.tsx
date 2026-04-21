@@ -136,7 +136,7 @@ export default function InterceptPage({ params }: { params: Promise<{ id: string
 
     useEffect(() => {
         const isLocal = typeof window !== 'undefined' && window.location.hostname === "localhost";
-        const API_URL = isLocal ? "http://localhost:5000" : (process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-car-backend-7np6.onrender.com");
+        const API_URL = isLocal ? "https://rental-garage.duckdns.org" : (process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "https://rental-garage.duckdns.org");
         const socket = io(API_URL, { transports: ["websocket"] });
 
         socket.on("connect", () => {
